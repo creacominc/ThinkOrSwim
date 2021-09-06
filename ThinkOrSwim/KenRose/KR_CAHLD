@@ -1,0 +1,14 @@
+#Follow @KRose_TDA on twitter for updares to this and other studies
+#ken.rose@tdameritrade.com CBLOLD Search
+#To use for scan place # signs before 2 Addlabel statements and change "def" before trigger statement to "plot"
+
+def StockPrice = close>=10;
+def trend = simpleMovingAvg("length"=30)> (simpleMovingAvg("length"=30)[5]);
+def MacdLow = macdHistogram(8,17,9)[1] < macdHistogram(8,17,9)[2] and close[1]<close[2] and close>high[1];
+#def Momentum = macdHistogram(8,17,9) > macdHistogram(8,17,9)[1];
+
+#def trigger = trend and momentum and MacdLow;
+def trigger = trend and MacdLow;
+AddLabel(yes, if trigger then "Bull Flag" else " ",Color.PLUM);
+
+AssignBackgroundColor(if trigger then color.GREEN else color.BLACK);

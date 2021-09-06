@@ -1,0 +1,31 @@
+# Follow @KRose_TDA on twitter for updates to this and other scripts
+
+#Thumbs up = potential Bull Flag - Thumbs Down potential bear flag
+#To use for scan place # signs before 2 Addlabel statements and change "def" before trigger statement to "plot"
+
+##############Bull Flag
+def StockPrice = close >= 10;
+def trend = SimpleMovingAvg("length" = 30) > (SimpleMovingAvg("length" = 30)[5]);
+
+def MacdLow = MACDHistogram(8, 17, 9)[1] < MACDHistogram(8, 17, 9)[2] and close[1] < close[2];
+
+#def Momentum = macdHistogram(8,17,9) > macdHistogram(8,17,9)[1];
+
+##############Bear Flag
+def StockPriceBear = close >= 10;
+def trendBear = SimpleMovingAvg("length" = 30) < (SimpleMovingAvg("length" = 30)[5]);
+def MacdHighBear = MACDHistogram(8, 17, 9)[1] > MACDHistogram(8, 17, 9)[2] and close[1] > close[2];
+
+#########################################
+
+#def trigger = trend and momentum and MacdLow;
+
+def Bulltrigger = trend and MacdLow and close > high[1];
+def BearTrigger = trendBear and MacdHighBear  and close < low[1];
+
+
+#AddLabel(yes, if Bulltrigger then "Bull Flag" else " ",Color.PLUM);
+AddLabel(yes, if Bulltrigger then "Bull Flag" else if BearTrigger then "Bear Flag" else " ", Color.BLACK);
+
+AssignBackgroundColor(if Bulltrigger then Color.GREEN else if BearTrigger then Color.LIGHT_RED else Color.BLACK);
+
