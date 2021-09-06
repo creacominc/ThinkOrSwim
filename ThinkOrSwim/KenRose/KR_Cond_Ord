@@ -1,0 +1,34 @@
+#Follow @Krose_TDA for updates to this and other custom scripts
+#Identfies the formation of flags
+#Number is how many days the flag has pulled back
+#Set desired sma in line 8
+#Original writer is unknown, updates done @KRose_TDA
+
+def price = ohlc4;
+def avg_length = 30;
+def displace = 0;
+def TRUE = 1;
+def FALSE = 0;
+def ma = Average(price[-displace], avg_length);
+
+# BULL Flag criteria
+def bull_retrace_2d = if close > ma and price[0] < price[1] and price[1] < price[2] then TRUE else FALSE;
+def bull_retrace_3d = if close > ma and price[0] < price[1] and price[1] < price[2] and price[2] < price[3]then TRUE else FALSE;
+def bull_retrace_4d = if close > ma and price[0] < price[1] and price[1] < price[2] and price[2] < price[3] and price[3] < price[4] then TRUE else FALSE;
+def bull_retrace_5d = if close > ma and price[0] < price[1] and price[1] < price[2] and price[2] < price[3] and price[3] < price[4] and price[4] < price[5] then TRUE else FALSE;
+
+# BEAR Flag criteria
+def bear_retrace_2d = if close < ma and price[0] > price[1] and price[1] > price[2] then TRUE else FALSE;
+def bear_retrace_3d = if close < ma and price[0] > price[1] and price[1] > price[2] and price[2] > price[3]then TRUE else FALSE;
+def bear_retrace_4d = if close < ma and price[0] > price[1] and price[1] > price[2] and price[2] > price[3] and price[3] > price[4] then TRUE else FALSE;
+def bear_retrace_5d = if close < ma and price[0] > price[1] and price[1] > price[2] and price[2] > price[3] and price[3] > price[4] and price[4] > price[5] then TRUE else FALSE;
+
+#plot pullback length value
+plot output = (if bull_retrace_5d==TRUE then 5 else if  bear_retrace_5d==TRUE then -5 else if bull_retrace_4d==TRUE then 4 else if bear_retrace_4d==TRUE then -4 else if bull_retrace_3d==TRUE then 3 else if bear_retrace_3d==TRUE then -3 else if bull_retrace_2d==TRUE then 2 else if  bear_retrace_2d==TRUE then -2 else 0);
+
+output.AssignValueColor(Color.current);
+
+#determine cell color
+AssignBackgroundColor(if bull_retrace_5d==TRUE or bull_retrace_4d==TRUE or bull_retrace_3d==TRUE or bull_retrace_2d==TRUE then Color.GREEN else if bear_retrace_5d==TRUE or bear_retrace_4d==TRUE or bear_retrace_3d==TRUE or bear_retrace_2d==TRUE then Color.RED else Color.white);
+
+
