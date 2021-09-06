@@ -1,0 +1,11 @@
+def stk = round(((close / close[64])-1)*100,2);
+
+def bmark = round(((close("SPX") / close("SPX")[64])-1)*100,2);
+
+def c = stk-bmark;
+
+plot data =  stk;
+
+data.AssignValueColor(color.BLACK);
+
+AssignBackgroundColor (if  c > 0 then color.GREEN else if C < 0 then color.Red else color.gray);
