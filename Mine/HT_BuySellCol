@@ -1,0 +1,32 @@
+# this script combines scripts from Ken Rose and some of my own into one column that says Buy/Hold/Sell and indicates why.
+
+# ########################### cahldTrigger
+# KR_CAHLD - close above high of the low dayNum
+#
+# trendHigherThanLastWeek - True if SMA is higher than last week and a month ago.
+def sma30barsToday     = simpleMovingAvg("length"=30);
+def sma30barsLastWeek  = (simpleMovingAvg("length"=30)[5]);
+def sma30barsLastMonth = (simpleMovingAvg("length"=30)[20]);
+def sma30barsLastQtr   = (simpleMovingAvg("length"=30)[65]);
+def sma30barsLastYr    = (simpleMovingAvg("length"=30)[250]);
+def trendHigherThanLastWeek   = sma30barsToday > sma30barsLastWeek
+                            and sma30barsLastWeek > sma30barsLastMonth
+                            and sma30barsLastMonth > sma30barsLastQtr
+                            and sma30barsLastQtr > sma30barsLastYr
+                            ;
+# cahld - True if the MACD and the price were falling yesterday but is up today. 
+def closeHigher = macdHistogram(8,17,9)[1] < macdHistogram(8,17,9)[2] and close[1]<close[2] and close>high[1];
+def cahldTrigger = trendHigherThanLastWeek and closeHigher;
+
+
+# ########################### gainExceedsHoldings
+# buy more if the gain exceeds what we have. that is, buy if gain is 5% but holding is < 5000.
+# def gain = reference HT_PLPercent;
+
+
+AddLabel( yes
+
+    , if cahldTrigger then "BUY - CAHLD"
+    else  "Hold"
+
+    , color.WHITE );
