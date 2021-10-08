@@ -1,0 +1,136 @@
+
+input ShowEducationLabels = yes;
+input fastLength = 12;
+input slowLength = 26;
+input MACDLength = 9;
+input averageType = AverageType.EXPONENTIAL;
+
+def Diff = MACD(fastLength, slowLength, MACDLength, averageType).Diff;
+def XUp;
+def XDn;
+
+if Crosses(Diff, 0, CrossingDirection.BELOW) {
+    XUp = no;
+    XDn = yes;
+}
+else if (Crosses(Diff, 0, CrossingDirection.ABOVE)) {
+    XUp = yes;
+    XDn = no;
+}
+else {
+    XUp = XUp[1];
+    XDn = XDn[1];
+}
+
+def crossBarUp = if XUp and !XUp[1] then BarNumber() else crossBarUp[1];
+def crossBarDn = if XDn and !XDn[1] then BarNumber() else crossBarDn[1];
+def crossBarDiff = crossBarUp - crossBarDn;
+def barsSinceCross = if crossBarDiff > 0 
+                     then BarNumber() - crossBarUp
+                     else BarNumber() - crossBarDn;
+
+#addlabel(yes,"crossBarUp: " + crossBarUp, Color.GREEN);
+#addlabel(yes,"crossBarDn: " + crossBarDn, Color.ORANGE);
+#addlabel(yes,"BarNumber(): " + BarNumber(), Color.LIGHT_GRAY);
+
+plot bullSig = if XUp and !XUp[1] then low else Double.NaN;
+bullSig.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+bullSig.SetDefaultColor(Color.YELLOW);
+bullSig.SetLineWeight(3);
+
+plot bearSig = if XDn and !XDn[1] then high else Double.NaN;
+bearSig.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+bearSig.SetDefaultColor(Color.CYAN);
+bearSig.SetLineWeight(3);
+
+def marketVal = Round( close * GetQuantity(), -1 );
+def bookVal   = Round( GetAveragePrice() * GetQuantity(), -1);
+# show status:  close, average, gain, and net liquid
+def plpercent = ( close / GetAveragePrice() * 100 ) - 100;
+
+def isSell = ( bookVal > 1500 ) and ( plpercent > 1.0 ) and ( (plpercent * 1.25) < (bookVal / 1000) );
+def isBuy = ( plpercent > 3.0 ) and ( (plpercent * 0.75) > (bookVal / 1000) );
+def strongBuy = 0;
+def strongSell = 0;
+
+def visibility = (GetQuantity() > 0); # shouldBUy or shouldSell;
+
+AddLabel( visibility, 
+    (if crossBarDiff > 0 then "Bull " else "Bear ")
+    + barsSinceCross + " bars  "
+    + "CL: " + close + " AV: " + Round( GetAveragePrice(), 2 )
+    + "  Qty: " + GetQuantity()
+    + "  "
+    ,
+    if strongBuy then Color.GREEN 
+    else if isBuy then Color.UPTICK
+    else if isSell then Color.DOWNTICK
+    else if strongSell then Color.LIGHT_RED
+    else Color.GRAY
+);
+
+
+# input lengthIntraday = 20;
+# input lengthDaily = 10;
+# plot data;
+# if GetAggregationPeriod() < AggregationPeriod.DAY {
+#     data = Average(close, lengthIntraday);
+# } else {
+#     data = Average(close, lengthDaily);
+# }
+
+## def today = GetYYYYMMDD();
+# def startDate = if GetLastMonth() == 1 then today - 8900 else today - 100;
+def barsForOneMonth = 22; # if( GetAggregationPeriod() < AggregationPeriod.DAY ) then 22 else 22 * 1000 ;
+# stop loss setting is the lower of the lowest price in the last 22 bars (1 month) or half way between the average cost and the last close
+def stopLoss = Round( min( lowest( low, barsForOneMonth ), ((close + GetAveragePrice())/2) ), 2);
+AddLabel( visibility, 
+    "SL: " + stopLoss
+    + "  Qty: " + Round( GetQuantity() / 2, -1 )
+    # + "  LastDay: " + startDate + "  "
+    ,
+    if strongBuy then Color.GREEN 
+    else if isBuy then Color.UPTICK
+    else if isSell then Color.DOWNTICK
+    else if strongSell then Color.LIGHT_RED
+    else Color.GRAY
+);
+
+
+AddLabel( visibility, 
+    "Mk$:  " + marketVal + " Bk$:  " + bookVal
+    + "  PL%:  " + Round( plpercent, 2 )
+    + " " + if strongBuy then "BUY" 
+             else if isBuy then "Acc"
+             else if isSell then "Trim"
+             else if strongSell then "SELL"
+             else "Hold"
+    + ". "
+    ,
+    if strongBuy then Color.GREEN 
+    else if isBuy then Color.UPTICK
+    else if isSell then Color.DOWNTICK
+    else if strongSell then Color.LIGHT_RED
+    else Color.GRAY
+);
+
+def dividendPerShareY0 = DividendsPerShareTTM();
+def dividendPerShareY1 = DividendsPerShareTTM()[259];
+def dividendPerShareY2 = DividendsPerShareTTM()[519];
+AddLabel( 1,
+  "Div: " + dividendPerShareY0
+  + "  Y1: " + dividendPerShareY1
+  + "  Y2: " + dividendPerShareY2
+  ,
+  if dividendPerShareY0 > dividendPerShareY1 and dividendPerShareY1 > dividendPerShareY2 then Color.GREEN 
+     else Color.GRAY
+);
+
+#
+# todays first bar
+#
+#def lastBar = if( GetDay() == GetLastDay(), GetDay(), Double.NAN);
+#AddLabel( 1,
+#      "Todays fist bar: " + lastBar
+#    , Color.GRAY
+#);
