@@ -157,24 +157,25 @@ def consBarsSell = okToSell and useConsBars and bars_down >= ConsecutiveBarsDown
 #           name = "ConsBarLX" );
 
 # ########################### Label for column
-AddLabel( yes
-    , if isCAHOLD  then "BUY - CAHLD"
-    else if isMACDCrossUp then "BUY - XUp"
-    else if isStressBuy then "BUY - Stress"
-    else if consBarsBuy then "BUY - ConsBar"
-    else if isCBLOHD then "SELL - CBLOHD"
-    else if isMACDCrossDn then "SELL - XDn"
-    else if isStopLimit then "SELL - StopLimit"
-    else if isStressMinExit then "SELL - StressMin"
-    else if isStressExit then "SELL - StressExit"
-    else if isStressCrisisStop then "SELL - StressCrisis"
-    else if consBarsSell then "SELL - ConsBars"
-    else  "Hold"
-    , color.WHITE );
+# AddLabel( yes
+#     , if isCAHOLD  then "BUY - CAHLD"
+#     else if isMACDCrossUp then "BUY - XUp"
+#     else if isStressBuy then "BUY - Stress"
+#     else if consBarsBuy then "BUY - ConsBar"
+#     else if isCBLOHD then "SELL - CBLOHD"
+#     else if isMACDCrossDn then "SELL - XDn"
+#     else if isStopLimit then "SELL - StopLimit"
+#     else if isStressMinExit then "SELL - StressMin"
+#     else if isStressExit then "SELL - StressExit"
+#     else if isStressCrisisStop then "SELL - StressCrisis"
+#     else if consBarsSell then "SELL - ConsBars"
+#     else  "Hold"
+#     , color.WHITE );
+
 
 # ########################### plot for buy scan
-# plot buySignal =  isCAHOLD or isMACDCrossUp or isStressBuy or consBarsBuy;
+plot buySignal =  isCAHOLD or isMACDCrossUp or isStressBuy or consBarsBuy;
 # ########################### plot for sell scan
-# plot sellSignal =  isCBLOHD or isMACDCrossDn or isStopLimit 
-#                     or isStressMinExit or isStressExit or isStressCrisisStop
-#                     or consBarsSell;
+plot sellSignal =  isCBLOHD or isMACDCrossDn or isStopLimit 
+                    or isStressMinExit or isStressExit or isStressCrisisStop
+                    or consBarsSell;

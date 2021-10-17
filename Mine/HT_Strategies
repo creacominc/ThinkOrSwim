@@ -75,29 +75,29 @@ def consBarsBuy = useConsBars and ascending and bars_up >= ConsecutiveBarsUp;
 def lastBuyBar = if ( isCAHOLD or isMACDCrossUp or isStressBuy or consBarsBuy ) then BarNumber() else lastBuyBar[1];
 
 # orders
-# AddOrder( OrderType.BUY_TO_OPEN,  
-#           isCAHOLD, 
-#           tradeSize = investment / close, 
-#           tickcolor = GetColor(1),
-#           arrowcolor = GetColor(1),
-#           name = "CAHOLD_LE" );
-# AddOrder( OrderType.BUY_TO_OPEN,
-#           isMACDCrossUp, 
-#           tradeSize = investment / close, 
-#           tickcolor = GetColor(1),
-#           arrowcolor = GetColor(1),
-#           name = "MACDCrossLE" );
-# AddOrder( OrderType.BUY_TO_OPEN,
-#           isStressBuy, 
-#           tradeSize = investment / close, 
-#           tickcolor = GetColor(1), 
-#           arrowcolor = GetColor(1), 
-#           name = "StressLE" );
-# addOrder( OrderType.BUY_TO_OPEN,
-#           consBarsBuy,
-#           tickColor = GetColor(1),
-#           arrowColor = GetColor(1),
-#           name = "ConsBarLE" );
+AddOrder( OrderType.BUY_TO_OPEN,  
+          isCAHOLD, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(1),
+          arrowcolor = GetColor(1),
+          name = "CAHOLD_LE" );
+AddOrder( OrderType.BUY_TO_OPEN,
+          isMACDCrossUp, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(1),
+          arrowcolor = GetColor(1),
+          name = "MACDCrossLE" );
+AddOrder( OrderType.BUY_TO_OPEN,
+          isStressBuy, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(1), 
+          arrowcolor = GetColor(1), 
+          name = "StressLE" );
+addOrder( OrderType.BUY_TO_OPEN,
+          consBarsBuy,
+          tickColor = GetColor(1),
+          arrowColor = GetColor(1),
+          name = "ConsBarLE" );
 
 
 # ########################### SELLs
@@ -120,57 +120,58 @@ def bars_down = if close < close[1] then bars_down[1] + 1 else 0;
 def consBarsSell = okToSell and useConsBars and bars_down >= ConsecutiveBarsDown;
 
 # orders
-# AddOrder( OrderType.SELL_TO_CLOSE,
-#           isCBLOHD, 
-#           tickcolor = GetColor(2),
-#           arrowcolor = GetColor(2),
-#           name = "CBLOHD_LX" );
-# AddOrder( OrderType.SELL_TO_CLOSE,
-#           isMACDCrossDn, 
-#           tickcolor = GetColor(2),
-#           arrowcolor = GetColor(2),
-#           name = "MACDCrossLX" );
-# AddOrder( OrderType.SELL_TO_CLOSE,
-#           isStopLimit,
-#           tickColor = GetColor(5),
-#           arrowColor = GetColor(5),
-#           name = "StopLimit" );
-# AddOrder( OrderType.SELL_TO_CLOSE,
-#           isStressMinExit,
-#           tickcolor = GetColor(2),
-#           arrowcolor = GetColor(2),
-#           name = "StressMinPriceLX" );
-# AddOrder( OrderType.SELL_TO_CLOSE,
-#           isStressExit,
-#           tickcolor = GetColor(2),
-#           arrowcolor = GetColor(2),
-#           name = "StressLX" );
-# AddOrder( OrderType.SELL_TO_CLOSE,
-#           isStressCrisisStop,
-#           tickcolor = GetColor(2),
-#           arrowcolor = GetColor(2),
-#           name = "StressCrisisStopLX" );
-# addOrder( OrderType.SELL_TO_CLOSE,
-#           consBarsSell,
-#           tickColor = GetColor(2),
-#           arrowColor = GetColor(2),
-#           name = "ConsBarLX" );
+AddOrder( OrderType.SELL_TO_CLOSE,
+          isCBLOHD, 
+          tickcolor = GetColor(2),
+          arrowcolor = GetColor(2),
+          name = "CBLOHD_LX" );
+AddOrder( OrderType.SELL_TO_CLOSE,
+          isMACDCrossDn, 
+          tickcolor = GetColor(2),
+          arrowcolor = GetColor(2),
+          name = "MACDCrossLX" );
+AddOrder( OrderType.SELL_TO_CLOSE,
+          isStopLimit,
+          tickColor = GetColor(5),
+          arrowColor = GetColor(5),
+          name = "StopLimit" );
+AddOrder( OrderType.SELL_TO_CLOSE,
+          isStressMinExit,
+          tickcolor = GetColor(2),
+          arrowcolor = GetColor(2),
+          name = "StressMinPriceLX" );
+AddOrder( OrderType.SELL_TO_CLOSE,
+          isStressExit,
+          tickcolor = GetColor(2),
+          arrowcolor = GetColor(2),
+          name = "StressLX" );
+AddOrder( OrderType.SELL_TO_CLOSE,
+          isStressCrisisStop,
+          tickcolor = GetColor(2),
+          arrowcolor = GetColor(2),
+          name = "StressCrisisStopLX" );
+addOrder( OrderType.SELL_TO_CLOSE,
+          consBarsSell,
+          tickColor = GetColor(2),
+          arrowColor = GetColor(2),
+          name = "ConsBarLX" );
 
 # ########################### Label for column
-AddLabel( yes
-    , if isCAHOLD  then "BUY - CAHLD"
-    else if isMACDCrossUp then "BUY - XUp"
-    else if isStressBuy then "BUY - Stress"
-    else if consBarsBuy then "BUY - ConsBar"
-    else if isCBLOHD then "SELL - CBLOHD"
-    else if isMACDCrossDn then "SELL - XDn"
-    else if isStopLimit then "SELL - StopLimit"
-    else if isStressMinExit then "SELL - StressMin"
-    else if isStressExit then "SELL - StressExit"
-    else if isStressCrisisStop then "SELL - StressCrisis"
-    else if consBarsSell then "SELL - ConsBars"
-    else  "Hold"
-    , color.WHITE );
+# AddLabel( yes
+#     , if isCAHOLD  then "BUY - CAHLD"
+#     else if isMACDCrossUp then "BUY - XUp"
+#     else if isStressBuy then "BUY - Stress"
+#     else if consBarsBuy then "BUY - ConsBar"
+#     else if isCBLOHD then "SELL - CBLOHD"
+#     else if isMACDCrossDn then "SELL - XDn"
+#     else if isStopLimit then "SELL - StopLimit"
+#     else if isStressMinExit then "SELL - StressMin"
+#     else if isStressExit then "SELL - StressExit"
+#     else if isStressCrisisStop then "SELL - StressCrisis"
+#     else if consBarsSell then "SELL - ConsBars"
+#     else  "Hold"
+#     , color.WHITE );
+
 
 # ########################### plot for buy scan
 # plot buySignal =  isCAHOLD or isMACDCrossUp or isStressBuy or consBarsBuy;
