@@ -1,0 +1,9 @@
+#start
+Input length = 20;
+def x= if close then (barnumber()) else double.nan;
+def barnumber = highestall(x);
+def lowbar = barnumber-length;
+def range = if barnumber()>lowbar then (low) else double.nan;
+def data = range;
+plot lo = if barnumber()> lowbar then lowestall(range) else double.nan;
+#end
