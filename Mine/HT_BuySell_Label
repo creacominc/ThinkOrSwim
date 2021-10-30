@@ -96,7 +96,6 @@ AddLabel( visibility,
     else Color.GRAY
 );
 
-
 AddLabel( visibility, 
     "Mk$:  " + marketVal + " Bk$:  " + bookVal
     + "  PL%:  " + Round( plpercent, 2 )
