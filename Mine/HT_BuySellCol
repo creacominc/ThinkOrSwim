@@ -49,6 +49,7 @@ case tick:
     mult = tickSize();
 }
 
+
 # ########################### BUYs
 def ascending = IsAscending( close, trendLength );
 # ########################### CAHOLD and yesterday is the lowest for N bars
@@ -157,17 +158,17 @@ def consBarsSell = okToSell and useConsBars and bars_down >= ConsecutiveBarsDown
 
 # ########################### Label for column
 AddLabel( yes
-    , if isCAHOLD  then "BUY - CAHLD"
-    else if isMACDCrossUp then "BUY - XUp"
-    else if isStressBuy then "BUY - Stress"
-    else if consBarsBuy then "BUY - ConsBar"
-    else if isCBLOHD then "SELL - CBLOHD"
-    else if isMACDCrossDn then "SELL - XDn"
-    else if isStopLimit then "SELL - StopLimit"
-    else if isStressMinExit then "SELL - StressMin"
-    else if isStressExit then "SELL - StressExit"
-    else if isStressCrisisStop then "SELL - StressCrisis"
-    else if consBarsSell then "SELL - ConsBars"
+    , if isCAHOLD              then "BUY a CAHLD"
+    else if isMACDCrossUp      then "BUY b XUp"
+    else if isStressBuy        then "BUY c Stress"
+    else if consBarsBuy        then "BUY d ConsBar"
+    else if isCBLOHD           then "SELL a CBLOHD"
+    else if isMACDCrossDn      then "SELL b XDn"
+    else if isStopLimit        then "SELL c StopLimit"
+    else if isStressMinExit    then "SELL d StressMin"
+    else if isStressExit       then "SELL e StressExit"
+    else if isStressCrisisStop then "SELL f StressCrisis"
+    else if consBarsSell       then "SELL g ConsBars"
     else  "Hold"
     , color.WHITE );
 
