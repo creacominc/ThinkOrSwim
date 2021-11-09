@@ -7,7 +7,21 @@ input averageType = AverageType.EXPONENTIAL;
 input atrLength = 29;
 input atrFactor = 3.5;
 input atrAverageType = AverageType.WILDERS;
+input minPLPercent = 3.0;
 
+## ATR
+plot currentATR = reference ATR( atrLength, atrAverageType );
+currentATR.Hide();
+def stopLimitPct =  Round( ( (atrFactor * currentATR)/close ) * 100.0, 2);
+def stopLimitPrc =  Round( close - (atrFactor * currentATR), 2);
+DefineGlobalColor("ATRHigh", CreateColor(50, 205, 50));
+DefineGlobalColor("ATRLow", Color.blue);
+DefineGlobalColor("ATRMid", Color.GRAY);
+#AddLabel( yes,
+#          "ATR = " + Round(currentATR, 1) + ", %=" + stopLimitPct + ", $=" + stopLimitPrc 
+#        );
+#             if currentATR > 25 then GlobalColor("ATRHigh") else if currentATR < 20 then GlobalColor("ATRLow") else #GlobalColor("ATRMid"));
+def minGainBeforeNextBuy = (currentATR*2.0/close*100.0);
 
 def Diff = MACD(fastLength, slowLength, MACDLength, averageType).Diff;
 def XUp;
@@ -53,7 +67,7 @@ def bookVal   = Round( GetAveragePrice() * GetQuantity(), -1);
 def plpercent = ( close / GetAveragePrice() * 100 ) - 100;
 
 def isSell = ( bookVal > 1500 ) and ( plpercent > 1.0 ) and ( (plpercent * 1.25) < (bookVal / 1000) );
-def isBuy = ( plpercent > 3.0 ) and ( (plpercent / 2.5) > (bookVal / 1000.0) );
+def isBuy = ( plpercent > minPLPercent ) and ( (plpercent / 2.5) > (bookVal / 1000.0) ) and ( plpercent > minGainBeforeNextBuy );
 def strongBuy = 0;
 def strongSell = 0;
 
@@ -82,18 +96,6 @@ AddLabel( visibility,
 # } else {
 #     data = Average(close, lengthDaily);
 # }
-
-## ATR
-plot currentATR = reference ATR( atrLength, atrAverageType );
-currentATR.Hide();
-def stopLimitPct =  Round( ( (atrFactor * currentATR)/close ) * 100.0, 2);
-def stopLimitPrc =  Round( close - (atrFactor * currentATR), 2);
-DefineGlobalColor("ATRHigh", CreateColor(50, 205, 50));
-DefineGlobalColor("ATRLow", Color.blue);
-DefineGlobalColor("ATRMid", Color.GRAY);
-#AddLabel (yes,
-#             Concat("ATR = ", Round(currentATR, 1)) + Concat(", %=", stopLimitPct) + Concat( ", $=", stopLimitPrc),
-#             if currentATR > 25 then GlobalColor("ATRHigh") else if currentATR < 20 then GlobalColor("ATRLow") else #GlobalColor("ATRMid"));
 
 
 
@@ -156,3 +158,4 @@ AddLabel( 1,
 #      "Todays fist bar: " + lastBar
 #    , Color.GRAY
 #);
+
