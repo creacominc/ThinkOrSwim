@@ -7,6 +7,8 @@ input useMACD      = 1;
 input useStopLimit = 1;
 input useStress    = 1;
 input useConsBars  = 1;
+input useAtrTsBuy  = 1;
+input useAtrTsSell = 1;
 
 # lowest point in 10 bars
 input minPriceLength = 10;
@@ -39,6 +41,13 @@ input ConsecutiveBarsUp = 3;
 input ConsecutiveBarsDown = 3;
 input MaxConsBars = 5;
 
+# inputs for ATR trailing stop LE/SE
+input trailType = {default modified, unmodified};
+input ATRPeriod = 29;
+input ATRFactor = 3.5;
+input firstTrade = {default long, short};
+input averageType = AverageType.WILDERS;
+
 def entryPrice = entryPrice();
 def mult;
 switch (offsetType) {
@@ -70,10 +79,13 @@ def isStressBuy = useStress and ascending and isReady and stress <= entryLevel;
 # ########################### Consecutive Bars Buy
 def bars_up = if close > close[1] then bars_up[1] + 1 else 0;
 def consBarsBuy = useConsBars and ascending and bars_up >= ConsecutiveBarsUp and bars_up <= MaxConsBars;
+# ########################### ATR Trailing stop LE
+def isAtrTSBuy = useAtrTsBuy and ATRTrailingStop(trailType, ATRPeriod, ATRFactor, firstTrade, averageType).buySignal;
+
 
 
 # ########################### Node Last Buy
-def lastBuyBar = if ( isCAHOLD or isMACDCrossUp or isStressBuy or consBarsBuy ) then BarNumber() else lastBuyBar[1];
+def lastBuyBar = if ( isCAHOLD or isMACDCrossUp or isStressBuy or consBarsBuy or isAtrTSBuy ) then BarNumber() else lastBuyBar[1];
 
 # orders
 AddOrder( OrderType.BUY_TO_OPEN,  
@@ -99,7 +111,11 @@ addOrder( OrderType.BUY_TO_OPEN,
           tickColor = GetColor(1),
           arrowColor = GetColor(1),
           name = "ConsBarLE" );
-
+addOrder( OrderType.BUY_TO_OPEN,
+          isAtrTSBuy,
+          tickColor = GetColor(1),
+          arrowColor = GetColor(1),
+          name = "ATRBuy" );
 
 # ########################### SELLs
 # ########################### CBLOHD and yesterday is the highest in NegativeVolumeIndex bars and 20 bars past the last buy.
@@ -119,6 +135,9 @@ def isStressCrisisStop = okToSell and useStress and crisisStop;
 # ########################### Consecutive Bars Sell
 def bars_down = if close < close[1] then bars_down[1] + 1 else 0;
 def consBarsSell = okToSell and useConsBars and bars_down >= ConsecutiveBarsDown;
+# ########################### ATR Trailing stop sell
+def isATRTSSell = okToSell and useAtrTsSell and ATRTrailingStop(trailType, ATRPeriod, ATRFactor, firstTrade, averageType).sellSignal;
+
 
 # orders
 AddOrder( OrderType.SELL_TO_CLOSE,
@@ -156,6 +175,12 @@ addOrder( OrderType.SELL_TO_CLOSE,
           tickColor = GetColor(2),
           arrowColor = GetColor(2),
           name = "ConsBarLX" );
+addOrder( OrderType.SELL_TO_CLOSE,
+          isATRTSSell,
+          tickColor = GetColor(2),
+          arrowColor = GetColor(2),
+          name = "ATRSell" );
+
 
 # ########################### Label for column
 # AddLabel( yes
@@ -180,3 +205,4 @@ addOrder( OrderType.SELL_TO_CLOSE,
 # plot sellSignal =  isCBLOHD or isMACDCrossDn or isStopLimit 
 #                     or isStressMinExit or isStressExit or isStressCrisisStop
 #                     or consBarsSell;
+
