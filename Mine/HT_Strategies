@@ -21,7 +21,7 @@ input offsetType = {default percent, value, tick};
 input stoppct = 1;
 input minHoldBars = 20;
 
-# inputs fro Stress
+# inputs for Stress
 input trendLength = 4;
 input index = "SPY";
 input length = 50;
@@ -37,6 +37,7 @@ input hedgeRatio = 0.5;
 # inputs for Consecutive Bars Strategy
 input ConsecutiveBarsUp = 3;
 input ConsecutiveBarsDown = 3;
+input MaxConsBars = 5;
 
 def entryPrice = entryPrice();
 def mult;
@@ -48,6 +49,7 @@ case value:
 case tick:
     mult = tickSize();
 }
+
 
 # ########################### BUYs
 def ascending = IsAscending( close, trendLength );
@@ -67,7 +69,7 @@ def isReady = if !isReady[1] and stress > 50 then yes else if IsNaN(crisisStop) 
 def isStressBuy = useStress and ascending and isReady and stress <= entryLevel;
 # ########################### Consecutive Bars Buy
 def bars_up = if close > close[1] then bars_up[1] + 1 else 0;
-def consBarsBuy = useConsBars and ascending and bars_up >= ConsecutiveBarsUp;
+def consBarsBuy = useConsBars and ascending and bars_up >= ConsecutiveBarsUp and bars_up <= MaxConsBars;
 
 
 # ########################### Node Last Buy
