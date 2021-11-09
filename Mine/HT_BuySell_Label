@@ -4,6 +4,10 @@ input fastLength = 12;
 input slowLength = 26;
 input MACDLength = 9;
 input averageType = AverageType.EXPONENTIAL;
+input atrLength = 29;
+input atrFactor = 3.5;
+input atrAverageType = AverageType.WILDERS;
+
 
 def Diff = MACD(fastLength, slowLength, MACDLength, averageType).Diff;
 def XUp;
@@ -49,7 +53,7 @@ def bookVal   = Round( GetAveragePrice() * GetQuantity(), -1);
 def plpercent = ( close / GetAveragePrice() * 100 ) - 100;
 
 def isSell = ( bookVal > 1500 ) and ( plpercent > 1.0 ) and ( (plpercent * 1.25) < (bookVal / 1000) );
-def isBuy = ( plpercent > 3.0 ) and ( (plpercent * 0.75) > (bookVal / 1000) );
+def isBuy = ( plpercent > 3.0 ) and ( (plpercent / 2.5) > (bookVal / 1000.0) );
 def strongBuy = 0;
 def strongSell = 0;
 
@@ -79,14 +83,32 @@ AddLabel( visibility,
 #     data = Average(close, lengthDaily);
 # }
 
+## ATR
+plot currentATR = reference ATR( atrLength, atrAverageType );
+currentATR.Hide();
+def stopLimitPct =  Round( ( (atrFactor * currentATR)/close ) * 100.0, 2);
+def stopLimitPrc =  Round( close - (atrFactor * currentATR), 2);
+DefineGlobalColor("ATRHigh", CreateColor(50, 205, 50));
+DefineGlobalColor("ATRLow", Color.blue);
+DefineGlobalColor("ATRMid", Color.GRAY);
+#AddLabel (yes,
+#             Concat("ATR = ", Round(currentATR, 1)) + Concat(", %=", stopLimitPct) + Concat( ", $=", stopLimitPrc),
+#             if currentATR > 25 then GlobalColor("ATRHigh") else if currentATR < 20 then GlobalColor("ATRLow") else #GlobalColor("ATRMid"));
+
+
+
 ## def today = GetYYYYMMDD();
 # def startDate = if GetLastMonth() == 1 then today - 8900 else today - 100;
 def barsForOneMonth = 22; # if( GetAggregationPeriod() < AggregationPeriod.DAY ) then 22 else 22 * 1000 ;
 # stop loss setting is the lower of the lowest price in the last 22 bars (1 month) or half way between the average cost and the last close
 def stopLoss = Round( min( lowest( low, barsForOneMonth ), ((close + GetAveragePrice())/2) ), 2);
 AddLabel( visibility, 
-    "SL: " + stopLoss
-    + "  Qty: " + Round( GetQuantity() / 2, -1 )
+    "Qty=" + Round( GetQuantity() / 2, -1 )
+    + ", TSP=" + stopLimitPct
+    + ", TRG=" + stopLimitPrc
+    + ", LMT=" + Round(stopLimitPrc * 0.995, 2)
+    + ", SL=" + stopLoss
+    + ", ATR=" + Round( currentATR, 1 )
     # + "  LastDay: " + startDate + "  "
     ,
     if strongBuy then Color.GREEN 
@@ -95,6 +117,7 @@ AddLabel( visibility,
     else if strongSell then Color.LIGHT_RED
     else Color.GRAY
 );
+
 
 AddLabel( visibility, 
     "Mk$:  " + marketVal + " Bk$:  " + bookVal
