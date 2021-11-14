@@ -4,8 +4,10 @@ input fastLength = 12;
 input slowLength = 26;
 input MACDLength = 9;
 input averageType = AverageType.EXPONENTIAL;
-input atrLength = 29;
-input atrFactor = 3.5;
+#hint atrLength: bars for average true range was 5.
+input atrLength = 65;
+#hint atrFactor: multiplier for ATR Trailing Stop buy/sell. was 3.5
+input atrFactor = 4.0;
 input atrAverageType = AverageType.WILDERS;
 input minPLPercent = 3.0;
 
