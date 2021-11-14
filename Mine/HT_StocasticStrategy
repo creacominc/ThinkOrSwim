@@ -1,0 +1,126 @@
+#  THIS IS NOT COMPLETE.
+
+input length = 30;
+
+# is the price moving accross the SMA
+plot SMA = Average(close, length);
+SMA.SetDefaultColor(GetColor(1));
+plot PriceUpSignal   = close crosses above SMA;
+plot PriceDownSignal = close crosses below SMA;
+PriceUpSignal.SetDefaultColor(Color.UPTICK);
+PriceUpSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+PriceDownSignal.SetDefaultColor(Color.DOWNTICK);
+PriceDownSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+
+# is the volume moving accross the average
+def VolAvg = Average(volume, length);
+plot VolUpSignal   = volume crosses above VolAvg;
+plot VolDownSignal = volume crosses below VolAvg;
+VolUpSignal.SetDefaultColor(Color.UPTICK);
+VolUpSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+VolDownSignal.SetDefaultColor(Color.DOWNTICK);
+VolDownSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+
+# is the macd crossing 0
+input fastLength = 12;
+input slowLength = 26;
+input MACDLength = 9;
+input averageType = AverageType.EXPONENTIAL;
+def  Diff = MACD(fastLength, slowLength, MACDLength, averageType).Diff;
+plot MacdUpSignal   =  Diff crosses above 0;
+plot MacdDownSignal =  Diff crosses below 0;
+MacdUpSignal.SetDefaultColor(Color.UPTICK);
+MacdUpSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+MacdDownSignal.SetDefaultColor(Color.DOWNTICK);
+MacdDownSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+
+def   score  = if PriceUpSignal    then 1 else 0
+             - if PriceDownSignal  then 1 else 0
+             + if VolUpSignal      then 1 else 0
+             - if VolDownSignal    then 1 else 0
+             + if MacdUpSignal     then 1 else 0
+             - if MacdDownSignal   then 1 else 0
+            ;
+
+
+AddChartBubble ( PriceUpSignal or VolUpSignal or MacdUpSignal
+                 , close * 0.80
+                 , "Up "   + score    + "  "+ if PriceUpSignal then "Price "
+                    else   if VolUpSignal   then "Volume "
+                    else   if MacdUpSignal  then "MacD "
+                    else ""
+                   
+                 , Color.UPTICK, 0 );
+
+AddChartBubble ( PriceDownSignal or VolDownSignal or MacdDownSignal
+                 , close * 1.20
+                 , "Down " + score  + "  " + if PriceDownSignal then "Price "
+                    else     if VolDownSignal   then "Volume "
+                    else     if MacdDownSignal  then "MacD "
+                    else ""
+                      
+                 , Color.DOWNTICK, 1 );
+
+
+
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#STO with breakout signals  ken.rose@investools.com
+declare lower;
+input over_bought = 75;
+input over_sold = 25;
+input KPeriod = 14;
+input DPeriod = 5;
+input priceH = high;
+input priceL = low;
+input priceC = close;
+input slowing_period = 1;
+input smoothingType = {default SMA, EMA};
+
+def lowest_k = Lowest(priceL, KPeriod);
+def c1 = priceC - lowest_k;
+def c2 = Highest(priceH, KPeriod) - lowest_k;
+def FastK = if c2 != 0 then c1 / c2 * 100 else 0;
+
+#plot FullK;
+def fullk;
+plot FullD;
+#def fulld;
+
+switch (smoothingType) {
+case SMA:
+    fullk = Average(FastK, slowing_period);
+    FullD = Average(fullk, DPeriod);
+case EMA:
+    fullk = ExpAverage(FastK, slowing_period);
+    FullD = ExpAverage(fullk, DPeriod);
+}
+
+plot OverBought = over_bought;
+plot OverSold = over_sold;
+plot FullDHIst = if FullD > 75 then 75 + (FullD - 75)  else Double.NaN ;
+
+AddCloud(75, FullD, CreateColor(255, 255, 255), Color.UPTICK);
+AddCloud(FullD, 25, CreateColor(255, 255, 255), Color.DOWNTICK);
+
+#Price.SetDefaultColor(CreateColor(255, 220, 210)); 
+
+OverBought.SetDefaultColor(GetColor(1));
+OverSold.SetDefaultColor(GetColor(1));
+
+def crossedb = Crosses(FullD, 75, CrossingDirection.BELOW);
+plot crossbelow = if crossedb then crossedb + 74 else Double.NaN;
+crossbelow.AssignValueColor(GetColor(5));
+crossbelow.SetPaintingStrategy(PaintingStrategy.ARROW_DOWN);
+
+def crossedu = Crosses(FullD, 25, CrossingDirection.ABOVE);
+plot crossabove = if crossedu then crossedu + 24 else Double.NaN;
+crossabove.AssignValueColor(GetColor(1));
+crossabove.SetPaintingStrategy(PaintingStrategy.ARROW_UP);
+
+def Phantom = if FullD < 75  and FullD  > 25 and FullD[1] < FullD[2] and FullD[2] > 25 and FullD  > FullD[1] then FullD else Double.NaN;
+plot pPhantom = Phantom;
+pPhantom.AssignValueColor(GetColor(1));
+pPhantom.SetPaintingStrategy(PaintingStrategy.ARROW_UP);
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
