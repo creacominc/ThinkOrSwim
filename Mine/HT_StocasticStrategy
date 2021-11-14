@@ -1,12 +1,24 @@
-#  THIS IS NOT COMPLETE.
+#hint investment: amount to be invested with each buy signal
+input investment = 500;
+
+#hint crossValue:  points to assign to a crossover (eg price crosses above average)
+input crossValue = 2;
+#hint inRangeValue:  points to assign to being in range (eg price over average)
+input inRangeValue = 1;
 
 input length = 30;
+#hint minBuyScore: minimum diff of buy and sell indicators before a buy order
+input minBuyScore = 2;
+#hint maxSellScore: maximum diff of buy and sell indicators before a sell order
+input maxSellScore = -2;
 
 # is the price moving accross the SMA
 plot SMA = Average(close, length);
 SMA.SetDefaultColor(GetColor(1));
 plot PriceUpSignal   = close crosses above SMA;
+def  PriceIsAbove    = close > SMA;
 plot PriceDownSignal = close crosses below SMA;
+def  PriceIsBelow    = close <= SMA;
 PriceUpSignal.SetDefaultColor(Color.UPTICK);
 PriceUpSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
 PriceDownSignal.SetDefaultColor(Color.DOWNTICK);
@@ -15,7 +27,9 @@ PriceDownSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
 # is the volume moving accross the average
 def VolAvg = Average(volume, length);
 plot VolUpSignal   = volume crosses above VolAvg;
+def  VolIsAbove    = volume > VolAvg;
 plot VolDownSignal = volume crosses below VolAvg;
+def  VolIsBelow    = volume <= VolAvg;
 VolUpSignal.SetDefaultColor(Color.UPTICK);
 VolUpSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
 VolDownSignal.SetDefaultColor(Color.DOWNTICK);
@@ -28,99 +42,85 @@ input MACDLength = 9;
 input averageType = AverageType.EXPONENTIAL;
 def  Diff = MACD(fastLength, slowLength, MACDLength, averageType).Diff;
 plot MacdUpSignal   =  Diff crosses above 0;
+def  MacdIsAboveAndRising    =  (Diff > 0) and (Diff > Diff[1]);
 plot MacdDownSignal =  Diff crosses below 0;
+def  MacdIsBelowAndFalling    =  (Diff <= 0) and (Diff < Diff[1]);
 MacdUpSignal.SetDefaultColor(Color.UPTICK);
 MacdUpSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
 MacdDownSignal.SetDefaultColor(Color.DOWNTICK);
 MacdDownSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
 
-def   score  = if PriceUpSignal    then 1 else 0
-             - if PriceDownSignal  then 1 else 0
-             + if VolUpSignal      then 1 else 0
-             - if VolDownSignal    then 1 else 0
-             + if MacdUpSignal     then 1 else 0
-             - if MacdDownSignal   then 1 else 0
+
+# is the stocastic crossing up from the low level or down from the high level
+input KPeriod = 14;
+input slowing_period = 1;
+input DPeriod = 5;
+input over_bought = 75;
+input over_sold = 25;
+def lowest_k = Lowest(low, KPeriod);
+def c1 = close - lowest_k;
+def c2 = Highest(high, KPeriod) - lowest_k;
+def FastK = if c2 != 0 then c1 / c2 * 100 else 0;
+def fullk = Average(FastK, slowing_period);
+def FullD = Average(fullk, DPeriod);
+
+plot StocUpSignal    = Crosses(FullD, over_sold, CrossingDirection.ABOVE);
+# stoc is higher than yesterday which was above over_sold and we are below over_bought...
+def  StocIsAboveAndRising     = (FullD > FullD[1]) and (FullD > over_sold) and (FullD < over_bought);
+StocUpSignal.AssignValueColor(GetColor(1));
+StocUpSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+
+plot StocDownSignal  = Crosses(FullD, over_bought, CrossingDirection.BELOW);
+# stoc is lower than yesterday which was below over_bought and we are above over_sold...
+def  StocIsBelowAndFalling     = (FullD < FullD[1]) and (FullD < over_bought) and (FullD > over_sold);
+StocDownSignal.AssignValueColor(GetColor(5));
+StocDownSignal.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+
+
+
+def   score  = (if PriceUpSignal    then crossValue else (if PriceIsAbove     then inRangeValue else 0))
+             - (if PriceDownSignal  then crossValue else (if PriceIsBelow     then inRangeValue else 0))
+             + (if VolUpSignal      then crossValue else (if VolIsAbove       then inRangeValue else 0))
+             - (if VolDownSignal    then crossValue else (if VolIsBelow       then inRangeValue else 0))
+             + (if MacdUpSignal     then crossValue else (if MacdIsAboveAndRising      then inRangeValue else 0))
+             - (if MacdDownSignal   then crossValue else (if MacdIsBelowAndFalling      then inRangeValue else 0))
+             + (if StocUpSignal     then crossValue else (if StocIsAboveAndRising  then inRangeValue else 0))
+             - (if StocDownSignal   then crossValue else (if StocIsBelowAndFalling then inRangeValue else 0))
             ;
 
 
-AddChartBubble ( PriceUpSignal or VolUpSignal or MacdUpSignal
+
+AddChartBubble ( score >= minBuyScore
                  , close * 0.80
-                 , "Up "   + score    + "  "+ if PriceUpSignal then "Price "
-                    else   if VolUpSignal   then "Volume "
-                    else   if MacdUpSignal  then "MacD "
-                    else ""
-                   
+                 , "Up "   + score    + "  "
+                    + (if PriceUpSignal then "Price " else "")
+                    + (if VolUpSignal   then "Volume " else "")
+                    + (if MacdUpSignal  then "MacD " else "")
+                    + (if StocUpSignal  then "Stoc " else "")
                  , Color.UPTICK, 0 );
 
-AddChartBubble ( PriceDownSignal or VolDownSignal or MacdDownSignal
+AddChartBubble ( score <= maxSellScore
                  , close * 1.20
-                 , "Down " + score  + "  " + if PriceDownSignal then "Price "
-                    else     if VolDownSignal   then "Volume "
-                    else     if MacdDownSignal  then "MacD "
-                    else ""
-                      
+                 , "Down " + score  + "  " 
+                    + (if PriceDownSignal then "Price "   else "")
+                    + (if VolDownSignal   then "Volume "  else "")
+                    + (if MacdDownSignal  then "MacD "    else "")
+                    + (if StocDownSignal  then "Stoc "    else "")
                  , Color.DOWNTICK, 1 );
 
 
 
+# orders
+AddOrder( OrderType.BUY_TO_OPEN,  
+          score >= minBuyScore, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(1),
+          arrowcolor = GetColor(1),
+          name = "BUY" );
 
-
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#STO with breakout signals  ken.rose@investools.com
-declare lower;
-input over_bought = 75;
-input over_sold = 25;
-input KPeriod = 14;
-input DPeriod = 5;
-input priceH = high;
-input priceL = low;
-input priceC = close;
-input slowing_period = 1;
-input smoothingType = {default SMA, EMA};
-
-def lowest_k = Lowest(priceL, KPeriod);
-def c1 = priceC - lowest_k;
-def c2 = Highest(priceH, KPeriod) - lowest_k;
-def FastK = if c2 != 0 then c1 / c2 * 100 else 0;
-
-#plot FullK;
-def fullk;
-plot FullD;
-#def fulld;
-
-switch (smoothingType) {
-case SMA:
-    fullk = Average(FastK, slowing_period);
-    FullD = Average(fullk, DPeriod);
-case EMA:
-    fullk = ExpAverage(FastK, slowing_period);
-    FullD = ExpAverage(fullk, DPeriod);
-}
-
-plot OverBought = over_bought;
-plot OverSold = over_sold;
-plot FullDHIst = if FullD > 75 then 75 + (FullD - 75)  else Double.NaN ;
-
-AddCloud(75, FullD, CreateColor(255, 255, 255), Color.UPTICK);
-AddCloud(FullD, 25, CreateColor(255, 255, 255), Color.DOWNTICK);
-
-#Price.SetDefaultColor(CreateColor(255, 220, 210)); 
-
-OverBought.SetDefaultColor(GetColor(1));
-OverSold.SetDefaultColor(GetColor(1));
-
-def crossedb = Crosses(FullD, 75, CrossingDirection.BELOW);
-plot crossbelow = if crossedb then crossedb + 74 else Double.NaN;
-crossbelow.AssignValueColor(GetColor(5));
-crossbelow.SetPaintingStrategy(PaintingStrategy.ARROW_DOWN);
-
-def crossedu = Crosses(FullD, 25, CrossingDirection.ABOVE);
-plot crossabove = if crossedu then crossedu + 24 else Double.NaN;
-crossabove.AssignValueColor(GetColor(1));
-crossabove.SetPaintingStrategy(PaintingStrategy.ARROW_UP);
-
-def Phantom = if FullD < 75  and FullD  > 25 and FullD[1] < FullD[2] and FullD[2] > 25 and FullD  > FullD[1] then FullD else Double.NaN;
-plot pPhantom = Phantom;
-pPhantom.AssignValueColor(GetColor(1));
-pPhantom.SetPaintingStrategy(PaintingStrategy.ARROW_UP);
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+AddOrder( OrderType.SELL_TO_CLOSE,  
+          score <= maxSellScore, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(2),
+          arrowcolor = GetColor(2),
+          name = "SELL" );
