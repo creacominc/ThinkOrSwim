@@ -55,7 +55,7 @@ plot pPhantomRed = PhantomRed;
 pPhantomRed.AssignValueColor(GetColor(5));
 pPhantomRed.SetPaintingStrategy(PaintingStrategy.ARROW_Down);
 
-addOrder(OrderType.BUY_TO_OPEN, crossedu, tickColor = GetColor(0), arrowColor = GetColor(0));
-addOrder(OrderType.BUY_TO_OPEN, phantomUp, tickColor = GetColor(0), arrowColor = GetColor(0));
-addOrder(OrderType.SELL_TO_CLOSE, crossedb, tickColor = GetColor(0), arrowColor = GetColor(0));
-addOrder(OrderType.SELL_TO_CLOSE, phantomDn, tickColor = GetColor(0), arrowColor = GetColor(0));
+addOrder(OrderType.BUY_TO_OPEN, crossedu, tickColor = GetColor(6), arrowColor = GetColor(6));
+addOrder(OrderType.BUY_TO_OPEN, phantomUp, tickColor = GetColor(6), arrowColor = GetColor(6));
+addOrder(OrderType.SELL_TO_CLOSE, crossedb, tickColor = GetColor(2), arrowColor = GetColor(2));
+addOrder(OrderType.SELL_TO_CLOSE, phantomDn, tickColor = GetColor(2), arrowColor = GetColor(2));
