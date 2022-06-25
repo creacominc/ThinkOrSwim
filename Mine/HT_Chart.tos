@@ -1,0 +1,284 @@
+## ###################
+## Notes
+## ###################
+declare hide_on_intraday;
+# - With some functions the chart adds 72 bars to the specified durations.  As a result, the numbers based on a time range will not match (eg On Balance Volume).
+# - Each section below will be enabled by an enablement switch and provides an indicator and possibly a buy/sell signal.
+
+#hint minHoldingPeriod: the minimum number of bars after a buy before a sell is allowed
+input minHoldingPeriod = 20;
+
+## ###################
+## enablement switches
+## ###################
+#hint enableOnBalanceVolume:  enable OnBalanceVolumeModified strategy
+input enableOnBalanceVolume = 1;
+#hint enableMACDCross: enable MACDCross strategy 
+input enableMACDCross = 1;
+
+
+
+## ####################
+## Chart markers
+## ####################
+#hint ATRPeriod: ATR The number of bars used to calculate the Average True Range. Was 29.
+input ATRPeriod = 20;
+#hint ATRBuyFactor: ATR The multiplier of the ATR value.  Default 4.5.
+input ATRBuyFactor = 4.5;
+#hint ATRSellFactor: ATR The multiplier of the ATR value.  Default 4.5
+input ATRSellFactor = 4.5;
+#hint ATRaverageType: ATR The type of moving average to be used in calculations: simple, exponential, weighted, Wilder's, or Hull.
+input ATRaverageType = AverageType.WILDERS;
+def barNums = if close then (barnumber()) else double.nan;
+def lastBarNum = highestall( barNums );
+def firstBarNum = lastBarNum - minHoldingPeriod;
+def isAfterFirst = barnumber() > firstBarNum;
+def isLastBar = (barnumber() == lastBarNum);
+def isOnOrAfterLast = (barnumber() >= lastBarNum);
+
+def lowsSinceStart = if barnumber() > firstBarNum then (low) else double.nan;
+def lastDayLow  = if isLastBar then (low) else double.nan;
+def lastDayHigh = if isLastBar then (high) else double.nan;
+def lastDayClose = if isLastBar then (close) else double.nan;
+def lastATR     = if isLastBar then ATR(ATRPeriod, ATRaverageType) else lastATR[1];
+
+def atrFactor = (ATRBuyFactor + ATRSellFactor) / 2.0;
+def currentATRPct = lastATR / close;
+def stopLimitPct =  Round( ( (atrFactor * lastATR)/close ) * 100.0, 2);
+def stopLimitPrc =  Round( close - (atrFactor * lastATR), 2);
+
+# AddChartBubble( isLastBar, lastDayClose, lastDayHigh );
+
+plot lo20      = if isAfterFirst then lowestall( lowsSinceStart ) else double.nan;
+def lowestLastDayClose = lowestall( lastDayClose );
+def highestLastDayHigh = highestall( lastDayHigh );
+def lowestLastDayLow   = lowestall( lastDayLow );
+plot lastClose = if isOnOrAfterLast then lowestLastDayClose else double.nan;
+plot plusXATR  = if isOnOrAfterLast then highestLastDayHigh + (ATRSellFactor * lastATR ) else double.nan;
+plot plusATR   = if isOnOrAfterLast then highestLastDayHigh + lastATR else double.nan;
+plot lessXATR  = if isOnOrAfterLast then lowestLastDayLow - (ATRBuyFactor * lastATR ) else double.nan;
+plot lessATR   = if isOnOrAfterLast then lowestLastDayLow - lastATR else double.nan;
+plot plus5pct  = if isOnOrAfterLast then lowestLastDayClose * 1.05 else double.nan;
+plot less5pct  = if isOnOrAfterLast then lowestLastDayClose * 0.95 else double.nan;
+
+lo20.SetStyle( Curve.SHORT_DASH );
+lo20.SetDefaultColor( Color.Yellow );
+lastClose.SetStyle( Curve.SHORT_DASH );
+lastClose.SetDefaultColor( Color.Gray );
+plus5pct.SetStyle( Curve.SHORT_DASH );
+plus5pct.SetDefaultColor( Color.Gray );
+less5pct.SetStyle( Curve.SHORT_DASH );
+less5pct.SetDefaultColor( Color.Gray );
+
+plusATR.SetStyle( Curve.SHORT_DASH );
+plusATR.SetDefaultColor( Color.LIGHT_ORANGE );
+lessATR.SetStyle( Curve.SHORT_DASH );
+lessATR.SetDefaultColor( Color.LIGHT_ORANGE );
+plusXATR.SetStyle( Curve.MEDIUM_DASH );
+plusXATR.SetDefaultColor( Color.DARK_ORANGE );
+lessXATR.SetStyle( Curve.MEDIUM_DASH );
+lessXATR.SetDefaultColor( Color.DARK_ORANGE );
+
+
+## #######################
+## ATR Trailing Stop Limit
+## #######################
+Assert(ATRFactor > 0, "'atr factor' must be positive: " + ATRFactor);
+def HiLo = Min(high - low, 1.5 * Average(high - low, ATRPeriod));
+def HRef = if low <= high[1]    then high - close[1]    else (high - close[1]) - 0.5 * (low - high[1]);
+def LRef = if high >= low[1]    then close[1] - low     else (close[1] - low) - 0.5 * (low[1] - high);
+def trueRange = Max(HiLo, Max(HRef, LRef));
+def loss = ATRFactor * MovingAverage( ATRaverageType, trueRange, ATRPeriod);
+def state = {default init, long, short};
+def trail;
+switch (state[1]) {
+case init:
+    if (!IsNaN(loss)) {
+            state = state.long;
+            trail =  close - loss;
+    } else {
+        state = state.init;
+        trail = Double.NaN;
+    }
+case long:
+    if (close > trail[1]) {
+        state = state.long;
+        trail = Max(trail[1], close - loss);
+    } else {
+        state = state.short;
+        trail = close + loss;
+    }
+case short:
+    if (close < trail[1]) {
+        state = state.short;
+        trail = Min(trail[1], close + loss);
+    } else {
+        state = state.long;
+        trail =  close - loss;
+    }
+}
+def TSBuySignal = Crosses(state == state.long, 0, CrossingDirection.ABOVE);
+def TSSellSignal = Crosses(state == state.short, 0, CrossingDirection.ABOVE);
+plot TrailingStop = trail;
+TrailingStop.SetPaintingStrategy(PaintingStrategy.POINTS);
+TrailingStop.DefineColor( "Buy", GetColor(1) );
+TrailingStop.DefineColor( "Sell", GetColor(0) );
+TrailingStop.AssignValueColor( if state == state.long    then TrailingStop.Color( "Sell" )    else TrailingStop.Color( "Buy" ) );
+
+
+
+
+
+
+
+
+
+## ###################
+## Volume : OnBalanceVolumeModified
+## Buy when the OBVM is increasing and crosses above the signal while the volume is greater than the average
+## ###################
+#hint OBVMLength:  the number of bars for the OnBalanceVolume calculation. (Likely plus 71 bars.) Default is 7.
+input OBVMLength = 7;
+#hint OBVMSignalLength:  the number of bars for the OBVM Signal line.  OBVMLength must be less thsn the Signal Length.  Default is 10.
+input OBVMSignalLength = 10;
+Assert( OBVMLength < OBVMSignalLength, "OBVM Length (" + OBVMLength + ") must be less than the Signal Length (" + OBVMSignalLength + ")" );
+#hint OBVMAverageType: average type used for OBVM
+input OBVMAverageType = AverageType.EXPONENTIAL;
+#hint VolumeAvgLength: bars for volume average.  default is 50.
+input VolumeAvgLength = 50;
+#
+def Vol = Sign(close - close[1]) * volume;
+def VolAvg = Average( volume, VolumeAvgLength );
+#
+def OBV = reference OnBalanceVolume();
+def OBVM = MovingAverage( OBVMAverageType, OBV, OBVMLength );
+def OBVMSignal = MovingAverage( OBVMAverageType, OBVM, OBVMSignalLength );
+#
+def isVolGrowing = Vol > VolAvg;
+# OBVM is good if it is higher than the signal and moving up.
+def isOBVMGood = (OBVM > OBVMSignal) and (OBVM > OBVM[1]);
+# OBVM is bad if it is lower than the signal and moving down.
+def isOBVMBad = (OBVM < OBVMSignal) and (OBVM < OBVM[1]);
+# Buy on OBVM cross up - the prior OBVM was below the prior signal
+def isOBVMBuy = enableOnBalanceVolume and isOBVMGood and (OBVM[1] < OBVMSignal[1]) and isVolGrowing;
+# Sell on OBVM cross down - the prior OBVM was above the prior signal
+def isOBVMSell = enableOnBalanceVolume and isOBVMBad and (OBVM[1] > OBVMSignal[1]);
+#
+#AddLabel( 1
+#    , "OBV: " + OBV+ ", OBVM: " + OBVM + ", Signal: " + OBVMSignal + ",  volume: " + Vol + ", Average: " + VolAvg
+#    , Color.Cyan
+#    );
+## TODO::  Verify that the volume shows the prior day and not the current day for which the volume is not known in total.
+
+
+
+
+
+
+## ###################
+## MACD Cross: from MACDCustom
+## Buy when the MACD crosses above the Signal
+## ###################
+#hint MACDFastLength:  default=12
+input MACDFastLength = 12;
+#hint MACDSlowLength: default=26
+input MACDSlowLength = 26;
+#hint MACDLength: default=9
+input MACDLength = 9;
+#hint MACDAverageType: exponential
+input MACDAverageType = AverageType.EXPONENTIAL;
+def MACDValue = MovingAverage( MACDAverageType, close, MACDFastLength ) - MovingAverage( MACDAverageType, close, MACDSlowLength );
+def MACDAvg   = MovingAverage( MACDAverageType, MACDValue, MACDLength );
+# MACD is good if it is above the average
+def isMACDGood = (MACDValue > MACDAvg) and ( MACDValue > MACDValue[1] );
+# MACD is bad if it is below the average
+def isMACDBad  = (MACDValue < MACDAvg) and ( MACDValue < MACDValue[1] );
+# Buy when the macd crosses above and is higher than yesterday
+def isMACDBuy = enableMACDCross and isMACDGood and (MACDValue[1] < MACDAvg[1]);
+# Sell when macd crosses below and is lower than yesterday
+def isMACDSell = enableMACDCross and isMACDBad and (MACDValue[1] > MACDAvg[1]);
+
+# AddChartBubble( isMACDBuy, open, "MACD Buy", Color.Green, 0 );
+
+
+## ############################################################
+## Track the bars since the last buy to avoid selling too soon.
+## ############################################################
+def isStrategyBuy  =  isOBVMBuy or isMACDBuy;
+def isStrategySell =  isOBVMSell or isMACDSell;
+def barsSinceBuy = if isStrategyBuy 
+                    then 0 else barsSinceBuy[1] + 1;
+def okToSell = isStrategySell and (barsSinceBuy > minHoldingPeriod);
+def okToBuy  = isStrategyBuy and ( ! isStrategySell );
+
+## ############################################################
+## Sell Orders
+## ############################################################
+AddOrder(OrderType.SELL_TO_CLOSE, TSSellSignal, open[-1], tickColor = GetColor(0), arrowColor = GetColor(0), name = "TSSell" );
+AddOrder(OrderType.SELL_TO_CLOSE, okToSell and isOBVMSell, open[-1], tickColor = GetColor(0), arrowColor = GetColor(0), name = "OBVMSell" );
+AddOrder(OrderType.SELL_TO_CLOSE, okToSell and isMACDSell, open[-1], tickColor = GetColor(0), arrowColor = GetColor(0), name = "MACDSell" );
+
+
+
+## ############################################################
+## Buy Orders
+## ############################################################
+AddOrder(OrderType.BUY_TO_OPEN, TSBuySignal,  open[-1], tickColor = GetColor(1), arrowColor = GetColor(1), name = "TSBuy" );
+AddOrder(OrderType.BUY_TO_OPEN, okToBuy and isOBVMBuy,  open[-1], tickColor = GetColor(1), arrowColor = GetColor(1), name = "OBVMBuy" );
+AddOrder(OrderType.BUY_TO_OPEN, okToBuy and isMACDBuy,  open[-1], tickColor = GetColor(1), arrowColor = GetColor(1), name = "MACDBuy" );
+
+
+
+
+## ###################################
+## show labels for ATR and Stop Limits
+## ###################################
+## #hint minPLPercent: the minimum gain before being a buy
+## input minPLPercent = 4.0;
+#hint minimumHoldingBuyFactor: a factor that determines the minimum amount we must have before buying more
+input minimumHoldingBuyFactor = 55;
+#hint minHolding: the minimum market value.  The amount we would be willing to lose if the price went to 0. Default=1000
+input minHolding = 1000;
+#hint maximumHoldingFactor: a factor that determines the most we should have of the security at the current gain
+input maximumHoldingFactor = 65;
+def quantity   = GetQuantity();
+def mktValue   = Round( close * quantity, -1);
+def openPL     = GetOpenPL( profitLossMode = ProfitLossMode.COST_BASIS );
+def plpercent  = ( openPL / mktValue * 100);
+def avgPrice   = GetAveragePrice();
+
+def maxSellPercentGain = Round( (ATRSellFactor * currentATRPct * 100 / 2.5), 2);
+def minBuyPercentGain  = Round( (ATRBuyFactor * currentATRPct * 100 / 1.75), 2 );
+def maxSellPrice       = Round( avgPrice * (100 + maxSellPercentGain) / 100, 2 );
+def minBuyPrice        = Round( avgPrice * (100 + minBuyPercentGain) / 100, 2  );
+## def isSell = ( mktValue > minHolding ) and ( plpercent > 1.0 ) and ( (plpercent * 0.50 * holdingToGainRatio) < (mktValue / 1000.00) );
+def isSell = ( mktValue > minHolding ) and ( plpercent > 1.0 ) 
+            and ( ( plpercent <  maxSellPercentGain ) or  ( (plpercent * maximumHoldingFactor/100) < (mktValue / 1000.00) ) );
+## def isBuy = ( plpercent > minPLPercent ) and ( (plpercent / holdingToGainRatio) > (mktValue / 1000.00) );
+def isBuy  =    ( ( plpercent > minBuyPercentGain ) and ( (plpercent * minimumHoldingBuyFactor/100) > (mktValue / 1000.00) ) );
+def strongBuy  = (isBuy and isStrategyBuy) or TSBuySignal;
+def strongSell = (isSell and isStrategySell) or TSSellSignal;
+
+def visibility = (GetQuantity() > 0);
+
+AddLabel( visibility, 
+    "ATR=" + Round( lastATR, 1 )
+    + ", ATR%=" + Round( currentATRPct * 100, 1 )
+    + ", TS%=" + stopLimitPct
+    + ", TRG=" + stopLimitPrc
+    + ", LMT=" + Round(stopLimitPrc * 0.995, 2)
+    + ", PL%=" + plpercent
+    + ", mktValue=" + mktValue + ", minHolding=" + minHolding
+    + ", plsell=" + Round( (plpercent * maximumHoldingFactor/100) * 1000, 2 )
+    + ", plbuy=" + Round( (plpercent * minimumHoldingBuyFactor/100) * 1000, 2 )
+    + if isBuy  then ", Buy%="  + minBuyPercentGain  + " > " + minBuyPrice + " " else ""
+    + if isSell then ", Sell%=" + maxSellPercentGain + " < " + maxSellPrice + " " else ", Buy%="  + minBuyPercentGain  + " > " + minBuyPrice + " "
+    ,
+    if strongBuy then Color.GREEN 
+    else if isBuy then Color.UPTICK
+    else if isSell then Color.DOWNTICK
+    else if strongSell then Color.LIGHT_RED
+    else Color.GRAY
+);
+
+
