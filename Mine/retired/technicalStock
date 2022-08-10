@@ -1,0 +1,28 @@
+#
+# TD Ameritrade IP Company, Inc. (c) 2018-2021
+#
+
+input vfiLength = 130;
+input averageLength = 100;
+input trendQualityLength = 63;
+input exitLength = 63;
+input maxStiffness = 7;
+input marketIndex = "SPY";
+input scoreCrit = 5.0;
+input weightForMoneyFlow = 1.0;
+input weightForTradingAboveAverage = 1.0;
+input weightForUptrend = 1.0;
+input weightForTrendQuality = 1.0;
+input weightForMarketDirection = 2.0;
+
+def technicalScore = reference TechnicalStockRating( "vfi length" = vfiLength, "average length" = averageLength, 
+                                                    "trend quality length" = trendQualityLength, "max stiffness" = maxStiffness, 
+                                                    "market index" = marketIndex, "weight for money flow" = weightForMoneyFlow, 
+                                                    "weight for trading above average" = weightForTradingAboveAverage, 
+                                                    "weight for uptrend" = weightForUptrend, "weight for trend quality" = weightForTrendQuality, 
+                                                    "weight for market direction" = weightForMarketDirection);
+def entryPrice = EntryPrice();
+def afterEntryCount = if IsNaN(entryPrice[1]) and !IsNaN(entryPrice) then 1 else if !IsNaN(entryPrice) then afterEntryCount[1] + 1 else Double.NaN;
+
+AddOrder(OrderType.BUY_TO_OPEN, technicalScore >= scoreCrit, tickcolor = GetColor(3), arrowcolor = GetColor(3), name = "TechnicalStockRatingLE");
+AddOrder(OrderType.SELL_TO_CLOSE, afterEntryCount > exitLength, tickcolor = GetColor(4), arrowcolor = GetColor(4), name = "TechnicalStockRatingLX");

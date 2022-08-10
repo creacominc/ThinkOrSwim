@@ -1,0 +1,12 @@
+#
+
+#plot PL = ( close - GetAveragePrice() ) / GetAveragePrice() * 100.00;
+#PL.AssignValueColor( if PL < 0 then COLOR.RED else if PL < 5 then COLOR.GRAY else COLOR.GREEN );
+
+
+#input length = 14;
+#input averageType = AverageType.WILDERS;
+
+#plot PL = DMI(length, averageType).ADX;
+plot PL = ( close - GetAveragePrice() ) / GetAveragePrice() * 100.00;
+PL.SetDefaultColor(GetColor(5));

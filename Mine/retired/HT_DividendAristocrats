@@ -1,0 +1,11 @@
+# 
+# scan for dividend aristocrats
+# 
+
+def divY0 = fold dayNumY0 = 0 to 260 with sumDivY0 = 1 do  if IsNAN( GetDividend()[dayNumY0] ) then sumDivY0 else sumDivY0 + GetDividend()[dayNumY0];
+
+def divY1 = fold dayNumY1 = 261 to 521 with sumDivY1 = 1 do  if IsNAN( GetDividend()[dayNumY1] ) then sumDivY1 else sumDivY1 + GetDividend()[dayNumY1];
+
+def divY2 = fold dayNumY2 = 522 to 782 with sumDivY2 = 1 do  if IsNAN( GetDividend()[dayNumY2] ) then sumDivY2 else sumDivY2 + GetDividend()[dayNumY2];
+
+plot filter = if( IsNAN(divY0) or IsNAN(divY1) or IsNAN(divY2) ) then 0 else   divY0 > divY1 and divY1 > divY2;

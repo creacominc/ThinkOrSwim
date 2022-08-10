@@ -1,0 +1,61 @@
+#MACDHistogramCrossover_Paris
+#Chatroom Request
+#8.30.2018
+#Displays number of bars since the last MACDHistogram Crossover signal
+#Added logic to display direction of last crossover signal
+
+#input ShowEducationLabels = yes;
+input fastLength = 12;
+input slowLength = 26;
+input MACDLength = 9;
+input averageType = AverageType.EXPONENTIAL;
+
+def Diff = MACD(fastLength, slowLength, MACDLength, averageType).Diff;
+def XUp;
+def XDn;
+
+if Crosses(Diff, 0, CrossingDirection.BELOW) {
+    XUp = no;
+    XDn = yes;
+}
+else if (Crosses(Diff, 0, CrossingDirection.ABOVE)) {
+    XUp = yes;
+    XDn = no;
+}
+else {
+    XUp = XUp[1];
+    XDn = XDn[1];
+}
+
+def crossBarUp = if XUp and !XUp[1] then BarNumber() else crossBarUp[1];
+def crossBarDn = if XDn and !XDn[1] then BarNumber() else crossBarDn[1];
+def crossBarDiff = crossBarUp - crossBarDn;
+def barsSinceCross = if crossBarDiff > 0 
+                     then BarNumber() - crossBarUp
+                     else BarNumber() - crossBarDn;
+
+#addlabel(yes,"crossBarUp: " + crossBarUp, Color.GREEN);
+#addlabel(yes,"crossBarDn: " + crossBarDn, Color.ORANGE);
+#addlabel(yes,"BarNumber(): " + BarNumber(), Color.LIGHT_GRAY);
+
+#plot bullSig = if XUp and !XUp[1] then low else Double.NaN;
+#     bullSig.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_UP);
+#     bullSig.SetDefaultColor(Color.YELLOW);
+#     bullSig.SetLineWeight(3);
+
+#plot bearSig = if XDn and !XDn[1] then high else Double.NaN;
+#     bearSig.SetPaintingStrategy(PaintingStrategy.BOOLEAN_ARROW_DOWN);
+#     bearSig.SetDefaultColor(Color.CYAN);
+#     bearSig.SetLineWeight(3);
+
+AddLabel( yes,  (if ( barsSinceCross < 10 and barsSinceCross > -10 ) then " "  else "") + barsSinceCross +
+    (if crossBarDiff > 0 then " BUY"
+                         else " SELL")
+    ,
+    if crossBarDiff > 0 
+    then if barsSinceCross < 3 then Color.LIGHT_GREEN else Color.DARK_GREEN
+    else if barsSinceCross < 3 then Color.LIGHT_RED   else Color.DARK_RED);
+
+
+
+

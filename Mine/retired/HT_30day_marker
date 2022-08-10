@@ -1,0 +1,4 @@
+AddChartBubble( GetDay() == GetLastDay() - 35, close, 
+   "Close on " + GetMonth() + "/" + GetDayOfMonth( GetYYYYMMDD() ) + " @ " + close,
+   color = Color.LIGHT_ORANGE );
+   

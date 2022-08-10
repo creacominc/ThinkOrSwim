@@ -1,0 +1,288 @@
+# which strategies to run
+input useCAHOLD = 1;
+input useMACD   = 1;
+input useStress = 1;
+input useVixTiming = 1;
+input useMomentum = 1;
+input useSpectrum = 1;
+
+input useAdvanceDecline = 1;
+# input useTechnical = 1;
+# input useAccumulationDistrib = 1;
+input useBollengerBands = 0;
+
+input useStopLoss = 1;
+input useTrailingStop = 1;
+
+# lowest point in 10 bars
+input minPriceLength = 10;
+input investment = 500;
+input minHoldLength = 20;
+
+input fastLength = 12;
+input slowLength = 26;
+input MACDLength = 9;
+
+input stopLoss = 10.0;
+input index = "SPY";
+input length = 50;
+input entryLevel = 10;
+input exitLevel = 50;
+
+input offsetType = {default percent, value, tick};
+input stopPercent = 2.0; # 0.75;
+input trailStopPercent = 2.0;
+def entryPrice = EntryPrice();
+
+input momentumLength = 12;
+
+input smaLength = 50;
+input trendLength = 11;
+
+input spectrumLength = 10;
+
+input advanceDeclineExch = {default NYSE, NASDAQ, AMEX};
+input advanceDeclineLength = 252;
+
+def mult;
+switch (offsetType) {
+case percent:
+    mult = entryPrice / 100;
+case value:
+    mult = 1;
+case tick:
+    mult = tickSize();
+}
+
+# ########################### BUYs
+# ########################### CAHOLD and yesterday is the lowest for N bars
+def minPrice =  Lowest( close, minPriceLength);
+def isCAHOLD =  (close > high[1]) and (close[1] == minPrice);
+#AddChartBubble( isCAHOLD,    close, close, Color.light_green );
+# ########################### MACD Crossover
+def Diff = MACD( fastLength, slowLength, MACDLength, averageType.EXPONENTIAL ).Diff;
+def isMACDCrossUp = Crosses(Diff, 0, CrossingDirection.ABOVE);
+# ########################### Stress
+def minPriceOk = Lowest(close, minPriceLength) > minPrice;
+def stress = reference StressIndicator(index = index, length = length).Stress;
+def crisisStop = close / entryPrice - 1 < -stopLoss / 100;
+def isReadyStress = if !isReadyStress[1] and stress > 50 then yes else if IsNaN(crisisStop) then isReadyStress[1] else if !IsNaN(entryPrice) and crisisStop then no else isReadyStress[1];
+# ########################### Vix Timing
+def priceVix = Fundamental( FundamentalType.LOW, "VIX" );
+def smaVix = Average(priceVix, smaLength);
+def vixBuyCondition =  (Sum(priceVix < smaVix, trendLength)[1] == trendLength);
+# ########################### Momentum
+def delta = close - close[ momentumLength ];
+def momentumCondition = (delta > 0) and (delta > delta[1]) and (high[-1] >= (high * 1.01));
+# ########################### useSpectrum
+def spectrumCondition = close > close[  spectrumLength ];
+# ########################### useAdvanceDecline
+def CumulAD = reference AdvanceDeclineCumulativeAvg( advanceDeclineExch, advanceDeclineLength ).CumulAD;
+def AvgCumulAD = reference AdvanceDeclineCumulativeAvg( advanceDeclineExch, advanceDeclineLength ).AvgCumulAD;
+def advanceDeclineLECond = CumulAD > AvgCumulAD;
+# ########################### useTechnical
+# input vfiLength = 130;
+# input averageLength = 100;
+# input trendQualityLength = 63;
+# input exitLength = 63;
+# input maxStiffness = 7;
+# input marketIndex = "SPY";
+# input scoreCrit = 5.0;
+# input weightForMoneyFlow = 1.0;
+# input weightForTradingAboveAverage = 1.0;
+# input weightForUptrend = 1.0;
+# input weightForTrendQuality = 1.0;
+# input weightForMarketDirection = 2.0;
+# 
+# def technicalScore = reference TechnicalStockRating( 
+#                                 "vfi length" = vfiLength,
+#                                 "average length" = averageLength, 
+#                                 "trend quality length" = trendQualityLength, 
+#                                 "max stiffness" = maxStiffness, 
+#                                 "market index" = marketIndex, 
+#                                 "weight for money flow" = weightForMoneyFlow, 
+#                                 "weight for trading above average" = weightForTradingAboveAverage, 
+#                                 "weight for uptrend" = weightForUptrend, 
+#                                 "weight for trend quality" = weightForTrendQuality, 
+#                                 "weight for market direction" = weightForMarketDirection);
+# def afterEntryCount = if IsNaN(entryPrice[1]) and !IsNaN(entryPrice) then 1 else if !IsNaN(entryPrice) then afterEntryCount[1] + 1 else Double.NaN;
+# def technicalLECond = technicalScore >= scoreCrit;
+# ########################### useAccumulationDistrib
+# input accDistLength = 4;
+# input accDistFactor = 0.75;
+# input accDistVolRatio = 1.0;
+# input volAvgLength = 4;
+# input volDelay = 4;
+# input accDistMode = {default Range, ATR};
+# 
+# def range = reference AccumulationDistribution(length = accDistLength, factor = accDistFactor, mode = accDistMode);
+# def consolidation = range < accDistFactor * range[accDistLength];
+# def top;
+# def bot;
+# if (consolidation) {
+#     top = Highest(high, accDistLength);
+#     bot = Lowest(low, accDistLength);
+# } else {
+#     top = top[1];
+#     bot = bot[1];
+# }
+# def avgVolume = Average(volume, volAvgLength);
+# def accumDistLECond = close > top and   bot > bot[12] and   avgVolume[volDelay] >  accDistVolRatio * avgVolume[volAvgLength + volDelay];
+
+
+# ########################### Node Last Buy
+def lastBuyBar = if (isCAHOLD or isMACDCrossUp or isReadyStress or momentumCondition or spectrumCondition or vixBuyCondition) then BarNumber() else lastBuyBar[1];
+
+# orders
+AddOrder( OrderType.BUY_TO_OPEN,  
+          useCAHOLD and isCAHOLD, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(1),
+          arrowcolor = GetColor(1),
+          name = "CAHOLD_LE" );
+AddOrder( OrderType.BUY_TO_OPEN,
+          useMACD and isMACDCrossUp, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(1),
+          arrowcolor = GetColor(1),
+          name = "MACDCrossLE" );
+AddOrder(OrderType.BUY_TO_OPEN, 
+          useStress and isReadyStress and stress <= entryLevel and minPriceOk, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(1), 
+          arrowcolor = GetColor(1), 
+          name = "StressLE");
+AddOrder( OrderType.BUY_TO_OPEN, 
+          useMomentum and momentumCondition, 
+          tradeSize = investment / close,
+          tickColor = GetColor(3), 
+          arrowColor = GetColor(3),
+          name = "Momentum" );
+AddOrder(OrderType.BUY_TO_OPEN,
+         useVixTiming and vixBuyCondition,
+         tradeSize = investment / close,
+         tickcolor = GetColor(1),
+         arrowcolor = GetColor(1),
+         name = "VIX_Timing_LE" );
+AddOrder(OrderType.BUY_TO_OPEN,
+         useSpectrum and spectrumCondition, 
+         tradeSize = investment / close,
+         tickColor = GetColor(1), 
+         arrowColor = GetColor(1),
+         name = "SpectrumLE" );
+AddOrder(OrderType.BUY_TO_OPEN,
+         useAdvanceDecline and advanceDeclineLECond,
+         tradeSize = investment / close,
+         tickColor = GetColor(0),
+         arrowColor = GetColor(0),
+         name = "AdvDeclCumLE");
+# AddOrder(OrderType.BUY_TO_OPEN, 
+#         useTechnical and technicalLECond, 
+#         tradeSize = investment / close,
+#         tickcolor = GetColor(3), 
+#         arrowcolor = GetColor(3), 
+#         name = "TechnicalStockRatingLE");
+# AddOrder(OrderType.BUY_TO_OPEN,
+#         useAccumulationDistrib  and accumDistLECond,
+#         tradeSize = investment / close,
+#         tickcolor = GetColor(4),
+#         arrowcolor = GetColor(4),
+#         name = "AccumulationDistributionLE"
+#    );
+
+
+# ########################### SELLs
+# ########################### CBLOHD and yesterday is the highest in NegativeVolumeIndex bars and 20 bars past the last buy.
+def okToSell =  (BarNumber() > (lastBuyBar + minHoldLength));
+def maxPrice =  Highest( close, minPriceLength);
+def isCBLOHD =  (close < low[1]) and (close[1] == maxPrice);
+#AddChartBubble( isCBLOHD,    close, close, Color.light_red );
+# ########################### MACD Crossover
+def isMACDCrossDn = Crosses(Diff, 0, CrossingDirection.BELOW);
+# ########################### Vix Timing
+def vixSellCondition = Sum(priceVix > smaVix, trendLength)[1] == trendLength;
+# ########################### useAdvanceDecline
+def advDeclineLXCond = CumulAD < AvgCumulAD;
+# ########################### useTechnical
+# def technicalLXCond = afterEntryCount > exitLength;
+# ########################### useAccumulationDistrib
+# def accumDistLXCond = close < bot;
+
+
+# ########################### Stop Loss
+def stopPrice = entryPrice - stopPercent * mult;
+
+# ########################### Trailing Stop Loss
+def price = if IsNaN(entryPrice[1]) then entryPrice else if !IsNaN(entryPrice) then Max(high, price[1]) else entryPrice;
+def trailStopPrice = price - trailStopPercent * mult;
+
+
+# orders
+AddOrder( OrderType.SELL_TO_CLOSE,
+          okToSell and useCAHOLD and isCBLOHD, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(2),
+          arrowcolor = GetColor(2),
+          name = "CAHOLD_LX" );
+AddOrder( OrderType.SELL_TO_CLOSE,
+          okToSell and useMACD and isMACDCrossDn, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(2),
+          arrowcolor = GetColor(2),
+          name = "MACDCrossLX" );
+AddOrder(OrderType.SELL_TO_CLOSE, 
+          okToSell and useStress and !minPriceOk, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(2), 
+          arrowcolor = GetColor(2), 
+          name = "StressMinPriceLX");
+AddOrder(OrderType.SELL_TO_CLOSE, 
+          okToSell and useStress and stress >= exitLevel, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(2), 
+          arrowcolor = GetColor(2), 
+          name = "StressLX");
+AddOrder(OrderType.SELL_TO_CLOSE, 
+          okToSell and useStress and crisisStop, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(2), 
+          arrowcolor = GetColor(2), 
+          name = "StressCrisisStopLX");
+addOrder(OrderType.SELL_TO_CLOSE,
+          okToSell and useStopLoss and (low <= stopPrice),
+          tradeSize = investment / close, 
+          tickColor = GetColor(5),
+          arrowColor = GetColor(5),
+          name = "STOPLoss" );
+addOrder(OrderType.SELL_TO_CLOSE, 
+          okToSell and useTrailingStop and low <= trailStopPrice, 
+          tradeSize = investment / close, 
+          tickColor = GetColor(0), 
+          arrowColor = GetColor(0),
+          name = "TStop" );
+AddOrder(OrderType.SELL_TO_CLOSE,
+          okToSell and useVixTiming and vixSellCondition,
+          tradeSize = investment / close, 
+          tickcolor = GetColor(2),
+          arrowcolor = GetColor(2),
+          name = "VIX_Timing_LX" );
+AddOrder(OrderType.SELL_TO_CLOSE, 
+         okToSell and useAdvanceDecline and advDeclineLXCond,
+         tradeSize = investment / close, 
+         tickColor = GetColor(1),
+         arrowColor = GetColor(1),
+         name = "AdvanceDeclineCumulativeLX");
+# AddOrder(OrderType.SELL_TO_CLOSE, 
+#          okToSell and useTechnical and technicalLXCond, 
+#          tradeSize = investment / close, 
+#          tickcolor = GetColor(4),
+#          arrowcolor = GetColor(4),
+#          name = "TechnicalStockRatingLX" );
+# AddOrder(OrderType.SELL_TO_CLOSE, 
+#         okToSell and useAccumulationDistrib and accumDistLXCond, 
+#         tradeSize = investment / close, 
+#         tickcolor = GetColor(1), 
+#         arrowcolor = GetColor(1), 
+#         name = "AccumulationDistributionLX");
+
+

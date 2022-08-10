@@ -1,0 +1,1 @@
+AddChartBubble(GetDay() == GetLastDay() - 32, high, "High 30 days past: " + high + " on " + GetYYYYMMDD(), Color.GREEN, yes);

@@ -1,0 +1,37 @@
+#
+# TD Ameritrade IP Company, Inc. (c) 2018-2021
+#
+
+input accDistLength = 4;
+input accDistFactor = 0.75;
+input accDistVolRatio = 1.0;
+input volAvgLength = 4;
+input volDelay = 4;
+input accDistMode = {default Range, ATR};
+
+def range = reference AccumulationDistribution(length = accDistLength, factor = accDistFactor, mode = accDistMode);
+def consolidation = range < accDistFactor * range[accDistLength];
+def top;
+def bot;
+if (consolidation) {
+    top = Highest(high, accDistLength);
+    bot = Lowest(low, accDistLength);
+} else {
+    top = top[1];
+    bot = bot[1];
+}
+def avgVolume = Average(volume, volAvgLength);
+def accumDistLECond = close > top and   bot > bot[12] and   avgVolume[volDelay] > accDistVolRatio * avgVolume[volAvgLength + volDelay];
+def accumDistLXCond = close < bot;
+
+AddOrder(OrderType.BUY_TO_OPEN,
+    useAccumulationDistrib  and accumDistLECond,
+    tickcolor = GetColor(4),
+    arrowcolor = GetColor(4),
+    name = "AccumulationDistributionLE"
+   );
+AddOrder(OrderType.SELL_TO_CLOSE, 
+        accumDistLXCond, 
+        tickcolor = GetColor(1), 
+        arrowcolor = GetColor(1), 
+        name = "AccumulationDistributionLX");

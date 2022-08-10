@@ -1,0 +1,10 @@
+# find stocks that consistently outperform the spx_vs_21d and nasdaq.
+def stk_vs_21d = round(((close / close[21])-1)*100,2);
+def spx_vs_21d = round(((close("SPX") / close("SPX")[21])-1)*100,2);
+def nas_vs_21d = round(((close("NASDAQ") / close("NASDAQ")[21])-1)*100,2);
+
+plot data =  stk_vs_21d;
+
+data.AssignValueColor(color.BLACK);
+def greater_than_both =  stk_vs_21d  > spx_vs_21d and stk_vs_21d > nas_vs_21d;
+AssignBackgroundColor( if greater_than_both then color.GREEN else color.Red )

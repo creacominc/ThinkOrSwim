@@ -1,0 +1,33 @@
+#
+# TD Ameritrade IP Company, Inc. (c) 2019-2021
+#
+
+input length = 20;
+input numDev = 2.0;
+input atrFactor = 4.0;
+input rewardRiskRatio = 1.0;
+
+plot UpperBand = reference BollingerBands(length = length, "num dev up" = numDev).UpperBand;
+plot LowerBand = reference BollingerBands(length = length, "num dev dn" = -numDev).LowerBand;
+plot BullishEngulfing = reference Engulfing().Bullish;
+def atr = reference ATR();
+def crossingLowerBand = close > LowerBand and (low < LowerBand or low[1] < LowerBand[1]);
+def aboveUpperBand = high > UpperBand;
+def stopPrice = close - atrFactor * atr;
+def rewardRisk = (UpperBand - high) / (high - stopPrice) > rewardRiskRatio;
+def buy = crossingLowerBand and BullishEngulfing and rewardRisk;
+def entryPrice = EntryPrice();
+def stopPriceAtEntry = if buy and IsNaN(entryPrice) then stopPrice else stopPriceAtEntry[1];
+plot StopLoss = if !IsNaN(entryPrice) then stopPriceAtEntry else Double.NaN;
+
+AddOrder(OrderType.BUY_TO_OPEN, buy, tickcolor = GetColor(0), arrowcolor = GetColor(0), name = "BBWE_LE");
+AddOrder(OrderType.SELL_TO_CLOSE, aboveUpperBand, tickcolor = GetColor(5), arrowcolor = GetColor(5), name = "BBWE_LX");
+AddOrder(OrderType.SELL_TO_CLOSE, low <= stopPriceAtEntry, tickcolor = GetColor(5), arrowcolor = GetColor(5), name = "StopLossLX");
+
+UpperBand.SetDefaultColor(GetColor(5));
+LowerBand.SetDefaultColor(GetColor(0));
+BullishEngulfing.SetPaintingStrategy(PaintingStrategy.BOOLEAN_POINTS);
+BullishEngulfing.SetDefaultColor(GetColor(0));
+BullishEngulfing.SetLineWeight(3);
+StopLoss.SetPaintingStrategy(PaintingStrategy.POINTS);
+StopLoss.SetDefaultColor(GetColor(5));
