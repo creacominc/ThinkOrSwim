@@ -1,3 +1,6 @@
+# Until we have a chance to understand this better (I am not sure it still works), hide the pythonApi folder.
+pythonApi
+
 # Compiled Lua sources
 luac.out
 
