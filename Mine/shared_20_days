@@ -1,9 +1,15 @@
 #start
 Input length = 20;
-def x= if close then (barnumber()) else double.nan;
-def barnumber = highestall(x);
-def lowbar = barnumber-length;
-def range = if barnumber()>lowbar then (low) else double.nan;
-def data = range;
-plot lo = if barnumber()> lowbar then lowestall(range) else double.nan;
+Input deltaUp = 5;
+Input deltaDn = 5;
+def barNums = if close then (barnumber()) else double.nan;
+def lastBarNum = highestall( barNums );
+def firstBarNum = lastBarNum - length;
+def lowsSinceStart = if barnumber() > firstBarNum then (low) else double.nan;
+def lastDayLow  = if barnumber() == lastBarNum then (low) else double.nan;
+def lastDayHigh = if barnumber() == lastBarNum then (high) else double.nan;
+#def data = range;
+plot lo = if barnumber()> firstBarNum then lowestall( lowsSinceStart ) else double.nan;
+plot lessfive = if barnumber() >= lastBarNum then lowestall( lastDayLow ) * ((100 - deltaDn) / 100.0) else double.nan;
+plot plusfive = if barnumber() >= lastBarNum then lowestall( lastDayHigh ) * ((100 + deltaUp) / 100.0) else double.nan;
 #end

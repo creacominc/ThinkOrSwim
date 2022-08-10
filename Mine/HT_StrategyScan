@@ -21,7 +21,7 @@ input offsetType = {default percent, value, tick};
 input stoppct = 1;
 input minHoldBars = 20;
 
-# inputs fro Stress
+# inputs for Stress
 input trendLength = 4;
 input index = "SPY";
 input length = 50;

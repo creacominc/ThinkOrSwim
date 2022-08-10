@@ -2,21 +2,38 @@
 # This script uses some logic from TD Ameritrade scripts
 # #######################
 # which strategies to run
+#hint useCAHOLD: Use CAHLD strategy
 input useCAHOLD    = 1;
+#hint useMACD: Use MACD Cross strategy
 input useMACD      = 1;
-input useStopLimit = 1;
+#hint useStopLimit: Use Stop Limit strategy
+input useStopLimit = 0;
+#hint useStress: Use Stress strategy
 input useStress    = 1;
+#hint useConsBars: Use Consecutive Bars strategy
 input useConsBars  = 1;
+#hint useAtrTsBuy: Use Average True Range buy strategy
 input useAtrTsBuy  = 1;
+#hint useAtrTsSell: Use Average True Range buy strategy
 input useAtrTsSell = 1;
+#hint useStocastic: Use Stocastic strategy
+input useStocastic = 1;
 
 # lowest point in 10 bars
+#hint minPriceLength: bars for determining the minimum and maximum prices for CAHLD and CBLHD
 input minPriceLength = 10;
+#hint investment: amount to be invested with each buy signal
 input investment = 500;
+#hint minHoldLength: minimum number of bars after buy before the next sell
 input minHoldLength = 20;
+#hint minBuyBars: minimum number of bars between buys
+input minBuyBars    = 3;
 
-input fastLength = 12;
-input slowLength = 26;
+#hint MACDfastLength: MACD The number of bars used to calculate the fast moving average
+input MACDfastLength = 12;
+#hint MACDslowLength: MACD The number of bars used to calculate the slow moving average
+input MACDslowLength = 26;
+#hint MACDLength: MACD The number of bars used to calculate the moving average of MACD
 input MACDLength = 9;
 
 input offsetType = {default percent, value, tick};
@@ -27,12 +44,9 @@ input minHoldBars = 20;
 input trendLength = 4;
 input index = "SPY";
 input length = 50;
-#input investment = 5000;
 input entryLevel = 10;
 input exitLevel = 50;
 input stopLoss = 10.0;
-#input minPrice = 3.0;
-#input minPriceLength = 5;
 input hedgeLength = 60;
 input hedgeRatio = 0.5;
 
@@ -42,11 +56,29 @@ input ConsecutiveBarsDown = 3;
 input MaxConsBars = 5;
 
 # inputs for ATR trailing stop LE/SE
+#hint trailType: ATR Defines whether to use "modified" or "unmodified" trailing stop calculation mechanism
 input trailType = {default modified, unmodified};
-input ATRPeriod = 29;
-input ATRFactor = 3.5;
+#hint ATRPeriod: ATR The number of bars used to calculate the Average True Range. Was 29.
+input ATRPeriod = 65;
+#hint ATRBuyFactor: ATR The multiplier of the ATR value.  Was 3.5.
+input ATRBuyFactor = 2.0;
+#hint ATRSellFactor: ATR The multiplier of the ATR value.  Was 3.5.
+input ATRSellFactor = 4.0;
+#hint firstTrade: ATR Defines whether to initialize ATR calculation at a short or a long position.
 input firstTrade = {default long, short};
-input averageType = AverageType.WILDERS;
+#hint ATRaverageType: ATR The type of moving average to be used in calculations: simple, exponential, weighted, Wilder's, or Hull.
+input ATRaverageType = AverageType.WILDERS;
+
+# inupts for Stocastics
+#hint StochPeriod: Length of lowest low and highest high (14)
+input StochPeriod = 14;
+#hint StocDPeriod (5)
+input StocDPeriod = 5;
+#hint StocSlowingPeriod (1)
+input StocSlowingPeriod = 1;
+#hint StocSmoothingType (SMA)
+input StocSmoothingType = {default SMA, EMA};
+
 
 def entryPrice = entryPrice();
 def mult;
@@ -59,20 +91,16 @@ case tick:
     mult = tickSize();
 }
 
-
 # ########################### BUYs
 def ascending = IsAscending( close, trendLength );
 # ########################### CAHOLD and yesterday is the lowest for N bars
 def minPrice =  Lowest( close, minPriceLength);
 def isCAHOLD =  useCAHOLD and (close > high[1]) and (close[1] == minPrice);
-#AddChartBubble( isCAHOLD,    close, close, Color.light_green );
 # ########################### MACD Crossover
-def Diff = MACD( fastLength, slowLength, MACDLength, averageType.EXPONENTIAL ).Diff;
+def Diff = MACD( MACDfastLength, MACDslowLength, MACDLength, AverageType.EXPONENTIAL ).Diff;
 def isMACDCrossUp = useMACD and Crosses(Diff, 0, CrossingDirection.ABOVE);
 # ########################### Stress Buy - only if trend is up
-#def minPriceOk = Lowest(close, minPriceLength) > minPrice;
 def stress = reference StressIndicator(index = index, length = length).Stress;
-#def entryPrice = EntryPrice();
 def crisisStop = close / entryPrice - 1 < -stopLoss / 100;
 def isReady = if !isReady[1] and stress > 50 then yes else if IsNaN(crisisStop) then isReady[1] else if !IsNaN(entryPrice) and crisisStop then no else isReady[1];
 def isStressBuy = useStress and ascending and isReady and stress <= entryLevel;
@@ -80,42 +108,72 @@ def isStressBuy = useStress and ascending and isReady and stress <= entryLevel;
 def bars_up = if close > close[1] then bars_up[1] + 1 else 0;
 def consBarsBuy = useConsBars and ascending and bars_up >= ConsecutiveBarsUp and bars_up <= MaxConsBars;
 # ########################### ATR Trailing stop LE
-def isAtrTSBuy = useAtrTsBuy and ATRTrailingStop(trailType, ATRPeriod, ATRFactor, firstTrade, averageType).buySignal;
-
-
+def isAtrTSBuy = useAtrTsBuy and ATRTrailingStop(trailType, ATRPeriod, ATRBuyFactor, firstTrade, ATRaverageType).buySignal;
+# ########################### Stocastics
+def lowestLow = Lowest( low, StochPeriod );
+def currentDelta  = close - lowestLow;
+def greatestDelta = Highest( high, StochPeriod ) - lowestLow;
+def deltaPercent  = if greatestDelta != 0 then currentDelta / greatestDelta * 100 else 0;
+def FullK;
+def FullD;
+switch (StocSmoothingType) {
+case SMA:
+    FullK = Average( deltaPercent, StocSlowingPeriod );
+    FullD = Average( FullK, StocDPeriod );
+case EMA:
+    FullK = ExpAverage( deltaPercent, StocSlowingPeriod );
+    FullD = ExpAverage( FullK, StocDPeriod );
+}
+# Buy signals
+def crossedu = useStocastic and Crosses( FullD, 25, CrossingDirection.ABOVE );
+def phantomUp =  useStocastic and FullD < 75  and FullD  > 25 and FullD[1] < FullD[2] and FullD[2] > 25 and FullD  > FullD[1];
 
 # ########################### Node Last Buy
-def lastBuyBar = if ( isCAHOLD or isMACDCrossUp or isStressBuy or consBarsBuy or isAtrTSBuy ) then BarNumber() else lastBuyBar[1];
+def isABuy = ( isCAHOLD or isMACDCrossUp or isStressBuy or consBarsBuy or isAtrTSBuy or crossedu or phantomUp );
+def lastBuyBar = if( IsNan(lastBuyBar[1]) ) then (-1 * minBuyBars) else if ( isABuy and ( BarNumber() > ( lastBuyBar[1] + minBuyBars ) ) ) then BarNumber() else lastBuyBar[1];
+def okToBuy    =  (lastBuyBar > ( lastBuyBar[1] + minBuyBars ) );
+
 
 # orders
-AddOrder( OrderType.BUY_TO_OPEN,  
-          isCAHOLD, 
-          tradeSize = investment / close, 
-          tickcolor = GetColor(1),
-          arrowcolor = GetColor(1),
-          name = "CAHOLD_LE" );
+addOrder( OrderType.BUY_TO_OPEN,
+          crossedu and okToBuy,
+          tickColor = GetColor(1),
+          arrowColor = GetColor(1),
+          name = "Stoch BUY" );
 AddOrder( OrderType.BUY_TO_OPEN,
-          isMACDCrossUp, 
-          tradeSize = investment / close, 
-          tickcolor = GetColor(1),
-          arrowcolor = GetColor(1),
-          name = "MACDCrossLE" );
-AddOrder( OrderType.BUY_TO_OPEN,
-          isStressBuy, 
+          isStressBuy and okToBuy, 
           tradeSize = investment / close, 
           tickcolor = GetColor(1), 
           arrowcolor = GetColor(1), 
           name = "StressLE" );
 addOrder( OrderType.BUY_TO_OPEN,
-          consBarsBuy,
+          isAtrTSBuy and okToBuy,
+          tickColor = GetColor(1),
+          arrowColor = GetColor(1),
+          name = "ATRBuy" );
+AddOrder( OrderType.BUY_TO_OPEN,  
+          isCAHOLD and okToBuy, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(1),
+          arrowcolor = GetColor(1),
+          name = "CAHOLD_LE" );
+AddOrder( OrderType.BUY_TO_OPEN,
+          isMACDCrossUp and okToBuy, 
+          tradeSize = investment / close, 
+          tickcolor = GetColor(1),
+          arrowcolor = GetColor(1),
+          name = "MACDCrossLE" );
+addOrder( OrderType.BUY_TO_OPEN,
+          consBarsBuy and okToBuy,
           tickColor = GetColor(1),
           arrowColor = GetColor(1),
           name = "ConsBarLE" );
 addOrder( OrderType.BUY_TO_OPEN,
-          isAtrTSBuy,
+          phantomUp and okToBuy,
           tickColor = GetColor(1),
           arrowColor = GetColor(1),
-          name = "ATRBuy" );
+          name = "Stoch buy" );
+
 
 # ########################### SELLs
 # ########################### CBLOHD and yesterday is the highest in NegativeVolumeIndex bars and 20 bars past the last buy.
@@ -136,10 +194,28 @@ def isStressCrisisStop = okToSell and useStress and crisisStop;
 def bars_down = if close < close[1] then bars_down[1] + 1 else 0;
 def consBarsSell = okToSell and useConsBars and bars_down >= ConsecutiveBarsDown;
 # ########################### ATR Trailing stop sell
-def isATRTSSell = okToSell and useAtrTsSell and ATRTrailingStop(trailType, ATRPeriod, ATRFactor, firstTrade, averageType).sellSignal;
+def isATRTSSell = okToSell and useAtrTsSell and ATRTrailingStop(trailType, ATRPeriod, ATRSellFactor, firstTrade, ATRaverageType).sellSignal;
+# ########################### Stocastics
+def crossedb   = okToSell and useStocastic and Crosses(FullD, 75, CrossingDirection.BELOW);
+def phantomDn  = okToSell and useStocastic and FullD < 75  and FullD  > 25 and FullD[1] > FullD[2] and FullD[2] > 25 and FullD  < FullD[1];
 
 
 # orders
+addOrder( OrderType.SELL_TO_CLOSE,
+          crossedb,
+          tickColor = GetColor(2),
+          arrowColor = GetColor(2),
+          name = "Stoch SELL" );
+AddOrder( OrderType.SELL_TO_CLOSE,
+          isStressExit,
+          tickcolor = GetColor(2),
+          arrowcolor = GetColor(2),
+          name = "StressLX" );
+addOrder( OrderType.SELL_TO_CLOSE,
+          isATRTSSell,
+          tickColor = GetColor(2),
+          arrowColor = GetColor(2),
+          name = "ATRSell" );
 AddOrder( OrderType.SELL_TO_CLOSE,
           isCBLOHD, 
           tickcolor = GetColor(2),
@@ -161,11 +237,6 @@ AddOrder( OrderType.SELL_TO_CLOSE,
           arrowcolor = GetColor(2),
           name = "StressMinPriceLX" );
 AddOrder( OrderType.SELL_TO_CLOSE,
-          isStressExit,
-          tickcolor = GetColor(2),
-          arrowcolor = GetColor(2),
-          name = "StressLX" );
-AddOrder( OrderType.SELL_TO_CLOSE,
           isStressCrisisStop,
           tickcolor = GetColor(2),
           arrowcolor = GetColor(2),
@@ -176,27 +247,34 @@ addOrder( OrderType.SELL_TO_CLOSE,
           arrowColor = GetColor(2),
           name = "ConsBarLX" );
 addOrder( OrderType.SELL_TO_CLOSE,
-          isATRTSSell,
+          phantomDn,
           tickColor = GetColor(2),
           arrowColor = GetColor(2),
-          name = "ATRSell" );
+          name = "Stoch sell" );
 
 
 # ########################### Label for column
+# def isBuy =  crossedu or isStressBuy or isATRTSBuy or isCAHOLD or isMACDCrossUp or consBarsBuy;
+# def isSell = phantomUp or crossedb or isATRTSSell or isCBLOHD or isMACDCrossDn or isStopLimit or isStressMinExit or isStressExit or isStressCrisisStop or consBarsSell;
 # AddLabel( yes
-#     , if isCAHOLD  then "BUY - CAHLD"
-#     else if isMACDCrossUp then "BUY - XUp"
-#     else if isStressBuy then "BUY - Stress"
-#     else if consBarsBuy then "BUY - ConsBar"
-#     else if isCBLOHD then "SELL - CBLOHD"
-#     else if isMACDCrossDn then "SELL - XDn"
-#     else if isStopLimit then "SELL - StopLimit"
-#     else if isStressMinExit then "SELL - StressMin"
-#     else if isStressExit then "SELL - StressExit"
-#     else if isStressCrisisStop then "SELL - StressCrisis"
-#     else if consBarsSell then "SELL - ConsBars"
+#     , if crossedu              then "0BUY Stoch"
+#     else if isStressBuy        then "1BUY Stress"
+#     else if isATRTSBuy         then "2BUY ATR"
+#     else if isCAHOLD           then "3BUY CAHLD"
+#     else if isMACDCrossUp      then "4BUY XUp"
+#     else if consBarsBuy        then "5buy ConsBar"
+#     else if phantomUp          then "5buy Stoch"
+#     else if crossedb           then "6SELL Stoch"
+#     else if isStressExit       then "6SELL StressExit"
+#     else if isATRTSSell        then "6SELL ATR"
+#     else if isCBLOHD           then "7SELL CBLOHD"
+#     else if isMACDCrossDn      then "7SELL XDn"
+#     else if isStopLimit        then "7SELL StopLimit"
+#     else if isStressMinExit    then "8SELL StressMin"
+#     else if isStressCrisisStop then "8SELL StressCrisis"
+#     else if consBarsSell       then "9SELL ConsBars"
 #     else  "Hold"
-#     , color.WHITE );
+#     , if isBuy then color.GREEN elif isSell then color.Red else color.WHITE );
 
 
 # ########################### plot for buy scan

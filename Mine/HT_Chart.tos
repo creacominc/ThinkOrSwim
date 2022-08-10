@@ -47,9 +47,8 @@ def currentATRPct = lastATR / close;
 def stopLimitPct =  Round( ( (atrFactor * lastATR)/close ) * 100.0, 2);
 def stopLimitPrc =  Round( close - (atrFactor * lastATR), 2);
 
-# AddChartBubble( isLastBar, lastDayClose, lastDayHigh );
-
 plot lo20      = if isAfterFirst then lowestall( lowsSinceStart ) else double.nan;
+#plot lo20      = lowest( low, 20 );
 def lowestLastDayClose = lowestall( lastDayClose );
 def highestLastDayHigh = highestall( lastDayHigh );
 def lowestLastDayLow   = lowestall( lastDayLow );
@@ -127,12 +126,6 @@ TrailingStop.AssignValueColor( if state == state.long    then TrailingStop.Color
 
 
 
-
-
-
-
-
-
 ## ###################
 ## Volume : OnBalanceVolumeModified
 ## Buy when the OBVM is increasing and crosses above the signal while the volume is greater than the average
@@ -164,15 +157,6 @@ def isOBVMBuy = enableOnBalanceVolume and isOBVMGood and (OBVM[1] < OBVMSignal[1
 # Sell on OBVM cross down - the prior OBVM was above the prior signal
 def isOBVMSell = enableOnBalanceVolume and isOBVMBad and (OBVM[1] > OBVMSignal[1]);
 #
-#AddLabel( 1
-#    , "OBV: " + OBV+ ", OBVM: " + OBVM + ", Signal: " + OBVMSignal + ",  volume: " + Vol + ", Average: " + VolAvg
-#    , Color.Cyan
-#    );
-## TODO::  Verify that the volume shows the prior day and not the current day for which the volume is not known in total.
-
-
-
-
 
 
 ## ###################
@@ -245,34 +229,28 @@ def quantity   = GetQuantity();
 def mktValue   = Round( close * quantity, -1);
 def openPL     = GetOpenPL( profitLossMode = ProfitLossMode.COST_BASIS );
 def plpercent  = ( openPL / mktValue * 100);
-def avgPrice   = GetAveragePrice();
 
 def maxSellPercentGain = Round( (ATRSellFactor * currentATRPct * 100 / 2.5), 2);
 def minBuyPercentGain  = Round( (ATRBuyFactor * currentATRPct * 100 / 1.75), 2 );
-def maxSellPrice       = Round( avgPrice * (100 + maxSellPercentGain) / 100, 2 );
-def minBuyPrice        = Round( avgPrice * (100 + minBuyPercentGain) / 100, 2  );
-## def isSell = ( mktValue > minHolding ) and ( plpercent > 1.0 ) and ( (plpercent * 0.50 * holdingToGainRatio) < (mktValue / 1000.00) );
-def isSell = ( mktValue > minHolding ) and ( plpercent > 1.0 ) 
-            and ( ( plpercent <  maxSellPercentGain ) or  ( (plpercent * maximumHoldingFactor/100) < (mktValue / 1000.00) ) );
-## def isBuy = ( plpercent > minPLPercent ) and ( (plpercent / holdingToGainRatio) > (mktValue / 1000.00) );
-def isBuy  =    ( ( plpercent > minBuyPercentGain ) and ( (plpercent * minimumHoldingBuyFactor/100) > (mktValue / 1000.00) ) );
-def strongBuy  = (isBuy and isStrategyBuy) or TSBuySignal;
-def strongSell = (isSell and isStrategySell) or TSSellSignal;
 
-def visibility = (GetQuantity() > 0);
+#def isSell = ( mktValue > minHolding ) and ( plpercent > 1.0 ) 
+#            and ( ( plpercent <  maxSellPercentGain ) or  ( (plpercent * maximumHoldingFactor/100) < (mktValue / 1000.00) ) #);
+#def isBuy  =    ( ( plpercent > minBuyPercentGain ) and ( (plpercent * minimumHoldingBuyFactor/100) > (mktValue / 1000.00) #) );
+#plot strongBuy  = (isBuy and isStrategyBuy) or TSBuySignal;
+#plot strongSell = (isSell and isStrategySell) or TSSellSignal;
 
-AddLabel( visibility, 
+plot isBuy = TSBuySignal or ( okToBuy and (isOBVMBuy or isMACDBuy) );
+def strongBuy = TSBuySignal and ( okToBuy and (isOBVMBuy or isMACDBuy) ); 
+plot isSell = TSSellSignal or ( okToSell and (okToSell or isMACDSell) );
+def strongSell = TSSellSignal and ( okToSell and (okToSell or isMACDSell) ); 
+
+AddLabel( 1, # visibility, 
     "ATR=" + Round( lastATR, 1 )
     + ", ATR%=" + Round( currentATRPct * 100, 1 )
     + ", TS%=" + stopLimitPct
     + ", TRG=" + stopLimitPrc
     + ", LMT=" + Round(stopLimitPrc * 0.995, 2)
     + ", PL%=" + plpercent
-    + ", mktValue=" + mktValue + ", minHolding=" + minHolding
-    + ", plsell=" + Round( (plpercent * maximumHoldingFactor/100) * 1000, 2 )
-    + ", plbuy=" + Round( (plpercent * minimumHoldingBuyFactor/100) * 1000, 2 )
-    + if isBuy  then ", Buy%="  + minBuyPercentGain  + " > " + minBuyPrice + " " else ""
-    + if isSell then ", Sell%=" + maxSellPercentGain + " < " + maxSellPrice + " " else ", Buy%="  + minBuyPercentGain  + " > " + minBuyPrice + " "
     ,
     if strongBuy then Color.GREEN 
     else if isBuy then Color.UPTICK
@@ -281,4 +259,21 @@ AddLabel( visibility,
     else Color.GRAY
 );
 
+## ###################################
+AddLabel( 1, 
+    if close < trail then "Buy SBMT BID>" + Round(trail, 2)
+    + ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
+    + ", Amt: " + max( ceil(trail * 2 * (1+currentATRPct)), 700 ) 
+    else "Sell SBMT ASK<" + Round(trail, 2)
+    + ", CNCL MARK<" + Round(trail * (1 - currentATRPct), 2)
+    ,
+    if close < trail then Color.UPTICK 
+    else Color.DOWNTICK
+);
 
+#def position = Round( trail *  ( if isBuy then 1.25 else 0.75 ), 2 );
+#AddChartBubble ( (isBuy or isSell)
+#                 , position
+#                 , (if isBuy then "Buy " else "Sell ") + trail
+#                 , if isBuy then Color.UPTICK else Color.DOWNTICK
+#                 , 1 );
