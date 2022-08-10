@@ -1,0 +1,75 @@
+#
+# TD Ameritrade IP Company, Inc. (c) 2009-2021
+#
+
+input trailType = {default modified, unmodified};
+input ATRPeriod = 5;
+input ATRFactor = 3.5;
+input firstTrade = {default long, short};
+input averageType = AverageType.WILDERS;
+
+Assert(ATRFactor > 0, "'atr factor' must be positive: " + ATRFactor);
+
+def HiLo = Min(high - low, 1.5 * Average(high - low, ATRPeriod));
+def HRef = if low <= high[1]
+    then high - close[1]
+    else (high - close[1]) - 0.5 * (low - high[1]);
+def LRef = if high >= low[1]
+    then close[1] - low
+    else (close[1] - low) - 0.5 * (low[1] - high);
+
+def trueRange;
+switch (trailType) {
+case modified:
+    trueRange = Max(HiLo, Max(HRef, LRef));
+case unmodified:
+    trueRange = TrueRange(high, close, low);
+}
+def loss = ATRFactor * MovingAverage(averageType, trueRange, ATRPeriod);
+
+def state = {default init, long, short};
+def trail;
+switch (state[1]) {
+case init:
+    if (!IsNaN(loss)) {
+        switch (firstTrade) {
+        case long:
+            state = state.long;
+            trail =  close - loss;
+        case short:
+            state = state.short;
+            trail = close + loss;
+        }
+    } else {
+        state = state.init;
+        trail = Double.NaN;
+    }
+case long:
+    if (close > trail[1]) {
+        state = state.long;
+        trail = Max(trail[1], close - loss);
+    } else {
+        state = state.short;
+        trail = close + loss;
+    }
+case short:
+    if (close < trail[1]) {
+        state = state.short;
+        trail = Min(trail[1], close + loss);
+    } else {
+        state = state.long;
+        trail =  close - loss;
+    }
+}
+
+def BuySignal = Crosses(state == state.long, 0, CrossingDirection.ABOVE);
+def SellSignal = Crosses(state == state.short, 0, CrossingDirection.ABOVE);
+
+plot TrailingStop = trail;
+
+TrailingStop.SetPaintingStrategy(PaintingStrategy.POINTS);
+TrailingStop.DefineColor("Buy", GetColor(0));
+TrailingStop.DefineColor("Sell", GetColor(1));
+TrailingStop.AssignValueColor(if state == state.long
+    then TrailingStop.Color("Sell")
+    else TrailingStop.Color("Buy"));

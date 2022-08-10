@@ -1,0 +1,13 @@
+#
+# TD Ameritrade IP Company, Inc. (c) 2013-2022
+#
+
+input fastLength = 12;
+input slowLength = 26;
+input macdLength = 9;
+input averageType = AverageType.EXPONENTIAL;
+
+def diff = reference MACD(fastLength, slowLength, macdLength, averageType).Diff;
+
+AddOrder(OrderType.BUY_AUTO, diff crosses above 0, tickColor = GetColor(0), arrowColor = GetColor(0), name = "MACDStratLE");
+AddOrder(OrderType.SELL_AUTO, diff crosses below 0, tickColor = GetColor(1), arrowColor = GetColor(1), name = "MACDStratSE");

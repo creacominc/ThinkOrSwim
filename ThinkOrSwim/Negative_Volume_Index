@@ -1,0 +1,19 @@
+#Negative Volume Index when price increases on lower volume "Up Weak) when price decreases on lower volume "Down Weak". 
+#There are two plot statements below. One is "Plot BearFlagTrigger" (Line 17) and the other is "plot BullFlagTrigger" (Line 19). 
+#There may be times when you just want the code to scan for stocks. To scan for Bear flag stocks remove the pound sign at the begining of the line 14 and leave the pound sign on line 16. 
+#To scan for bull flags remove the pound sign at the beginning of line 16 and leave the pound sign at the beggining of line 14. To use this code as a custom column, leave the pound sign in place on both lines
+
+def VolDownOne = NegativeVolumeIndex() > NegativeVolumeIndex()[1];
+def VolDowntwo = NegativeVolumeIndex() < NegativeVolumeIndex()[1];
+#def closedir = close < close[1];
+#def closedirone = close > close[1];
+
+
+
+AddLabel(yes, if VolDownOne and VolDownOne[1] and VolDownOne[2] then "Up Weak" else  if VolDowntwo and VolDowntwo[1] and VolDowntwo[2] then "Down Weak" else " ", Color.PLUM);
+
+AssignBackgroundColor(if ( VolDownOne and VolDownOne[1] and VolDownOne[2]) or ( VolDowntwo and VolDowntwo[1] and VolDowntwo[2]) then Color.YELLOW else Color.WHITE);
+
+#plot BearFlagTrigger =  ( volDownone and voldownOne[1] and voldownOne[2]) or ( volDowntwo and voldowntwo[1]and voldowntwo[2]);
+
+#plot BullFlagTrigger = volDowntwo and voldowntwo[1]and voldowntwo[2];

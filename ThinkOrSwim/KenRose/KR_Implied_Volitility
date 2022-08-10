@@ -1,0 +1,16 @@
+# Follow Ken Rose on twitter for updates to this and other scripts current twitter handle @KRose_TDA
+#Shows the current point of implied volitility in relation to the range over the last 2 years. Change Input length to 252 for one year
+# 90% would mean IV is at the 90% point in the range. 10% from the top
+#declare upper;
+input period = AggregationPeriod.DAY ;
+#hint period: time period to use for aggregating implied volatility.
+input length = 504 ;
+#hint length: #bars to use in implied volatility calculation.
+def periodHigh = Highest( imp_volatility(period = period), length = length);
+def periodLow = Lowest( imp_volatility(period = period), length = length);
+def ivRange = periodHigh - periodLow ;
+def ivp = Round( 100 * (imp_volatility(period = period) - periodLow) / ivRange, 2);
+#def ivp = close;
+plot test = ivp;
+#AddLabel(1, ivp, color = Color.PLUM);
+#AddLabel(1, Concat("IV%: ", ivp), color = Color.PLUM);

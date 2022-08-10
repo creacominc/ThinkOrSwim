@@ -1,0 +1,10 @@
+# from video: https://youtu.be/Xo2BrPSeLAs
+
+# Set aggregation to 1m (needed for SecondsFromTime but so far he has not said how to do that.  I assume this only works for scans?)
+
+def agg = aggregationPeriod.DAY;
+def PriceTarget = high( period=agg )[1];  # previous days high
+def atr = reference ATR();
+def clock = SecondsFromTime( 0930 ) > 23280; # 6.5x60x60 = 23,400 | 23,400 - 120 = 23280
+def TriggerPrice = close > (PriceTarget + atr);
+plot condition = Clock and TriggerPrice;

@@ -1,0 +1,28 @@
+#MACD_Background_Color
+
+input fastLength = 12;
+input slowLength = 26;
+input MACDLength = 9;
+input AverageType = {SMA, default EMA};
+
+def Value;
+def Avg;
+switch (AverageType) 
+{
+case SMA:
+    Value = Average(close, fastLength) - Average(close, slowLength);
+    Avg = Average(Value, MACDLength);
+
+case EMA:
+    Value = ExpAverage(close, fastLength) - ExpAverage(close, slowLength);
+    Avg = ExpAverage(Value, MACDLength);
+}
+
+plot Diff = Value - Avg;
+
+#AssignBackgroundColor(if Diff > 1.0 then Color.DARK_GREEN else if Diff < -1.0 then color.DARK_RED else Color.CURRENT);
+
+#AddLabel(yes, AsText(Diff, NumberFormat.TWO_DECIMAL_PLACES));
+AddLabel( yes
+   , if Diff > 1.0 then "BUY" else if Diff < -1.0 then "SELL" else " "
+   , if Diff > 1.0 then Color.Green else if Diff < -1.0 then Color.Red else Color.Black );
