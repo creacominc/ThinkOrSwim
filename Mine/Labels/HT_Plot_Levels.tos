@@ -8,6 +8,14 @@ declare hide_on_intraday;
 #hint minHoldingPeriod: the minimum number of bars after a buy before a sell is allowed
 input minHoldingPeriod = 20;
 
+## ###################
+## enablement switches
+## ###################
+#hint enableOnBalanceVolume:  enable OnBalanceVolumeModified strategy
+#input enableOnBalanceVolume = 1;
+#hint enableMACDCross: enable MACDCross strategy 
+#input enableMACDCross = 1;
+
 ## ####################
 ## Chart markers
 ## ####################
@@ -68,3 +76,202 @@ plusXATR.SetDefaultColor( Color.DARK_ORANGE );
 lessXATR.SetStyle( Curve.MEDIUM_DASH );
 lessXATR.SetDefaultColor( Color.DARK_ORANGE );
 
+
+## #######################
+## ATR Trailing Stop Limit
+## #######################
+#Assert(ATRFactor > 0, "'atr factor' must be positive: " + ATRFactor);
+#def HiLo = Min(high - low, 1.5 * Average(high - low, ATRPeriod));
+#def HRef = if low <= high[1]    then high - close[1]    else (high - close[1]) - 0.5 * (low - high[1]);
+#def LRef = if high >= low[1]    then close[1] - low     else (close[1] - low) - 0.5 * (low[1] - high);
+#def trueRange = Max(HiLo, Max(HRef, LRef));
+#def loss = ATRFactor * MovingAverage( ATRaverageType, trueRange, ATRPeriod);
+#def state = {default init, long, short};
+#def trail;
+#switch (state[1]) {
+#case init:
+#    if (!IsNaN(loss)) {
+#            state = state.long;
+#            trail =  close - loss;
+#    } else {
+#        state = state.init;
+#        trail = Double.NaN;
+#    }
+#case long:
+#    if (close > trail[1]) {
+#        state = state.long;
+#        trail = Max(trail[1], close - loss);
+#    } else {
+#        state = state.short;
+#        trail = close + loss;
+#    }
+#case short:
+#    if (close < trail[1]) {
+#        state = state.short;
+#        trail = Min(trail[1], close + loss);
+#    } else {
+#        state = state.long;
+#        trail =  close - loss;
+#    }
+#}
+#def TSBuySignal = Crosses(state == state.long, 0, CrossingDirection.ABOVE);
+#def TSSellSignal = Crosses(state == state.short, 0, CrossingDirection.ABOVE);
+#plot TrailingStop = trail;
+#TrailingStop.SetPaintingStrategy(PaintingStrategy.POINTS);
+#TrailingStop.DefineColor( "Buy", GetColor(1) );
+#TrailingStop.DefineColor( "Sell", GetColor(0) );
+#TrailingStop.AssignValueColor( if state == state.long    then TrailingStop.Color( "Sell" )    else TrailingStop.Color( "Buy" ) );
+
+
+
+## ###################
+## Volume : OnBalanceVolumeModified
+## Buy when the OBVM is increasing and crosses above the signal while the volume is greater than the average
+## ###################
+#hint OBVMLength:  the number of bars for the OnBalanceVolume calculation. (Likely plus 71 bars.) Default is 7.
+#input OBVMLength = 7;
+#hint OBVMSignalLength:  the number of bars for the OBVM Signal line.  OBVMLength must be less thsn the Signal Length.  Default is 10.
+#input OBVMSignalLength = 10;
+#Assert( OBVMLength < OBVMSignalLength, "OBVM Length (" + OBVMLength + ") must be less than the Signal Length (" + OBVMSignalLength + ")" );
+#hint OBVMAverageType: average type used for OBVM
+#input OBVMAverageType = AverageType.EXPONENTIAL;
+#hint VolumeAvgLength: bars for volume average.  default is 50.
+#input VolumeAvgLength = 50;
+#
+#def Vol = Sign(close - close[1]) * volume;
+#def VolAvg = Average( volume, VolumeAvgLength );
+#
+#def OBV = reference OnBalanceVolume();
+#def OBVM = MovingAverage( OBVMAverageType, OBV, OBVMLength );
+#def OBVMSignal = MovingAverage( OBVMAverageType, OBVM, OBVMSignalLength );
+#
+#def isVolGrowing = Vol > VolAvg;
+# OBVM is good if it is higher than the signal and moving up.
+#def isOBVMGood = (OBVM > OBVMSignal) and (OBVM > OBVM[1]);
+# OBVM is bad if it is lower than the signal and moving down.
+#def isOBVMBad = (OBVM < OBVMSignal) and (OBVM < OBVM[1]);
+# Buy on OBVM cross up - the prior OBVM was below the prior signal
+#def isOBVMBuy = enableOnBalanceVolume and isOBVMGood and (OBVM[1] < OBVMSignal[1]) and isVolGrowing;
+# Sell on OBVM cross down - the prior OBVM was above the prior signal
+#def isOBVMSell = enableOnBalanceVolume and isOBVMBad and (OBVM[1] > OBVMSignal[1]);
+#
+
+
+## ###################
+## MACD Cross: from MACDCustom
+## Buy when the MACD crosses above the Signal
+## ###################
+#hint MACDFastLength:  default=12
+#input MACDFastLength = 12;
+#hint MACDSlowLength: default=26
+#input MACDSlowLength = 26;
+#hint MACDLength: default=9
+#input MACDLength = 9;
+#hint MACDAverageType: exponential
+#input MACDAverageType = AverageType.EXPONENTIAL;
+#def MACDValue = MovingAverage( MACDAverageType, close, MACDFastLength ) - MovingAverage( MACDAverageType, close, MACDSlowLength );
+#def MACDAvg   = MovingAverage( MACDAverageType, MACDValue, MACDLength );
+# MACD is good if it is above the average
+#def isMACDGood = (MACDValue > MACDAvg) and ( MACDValue > MACDValue[1] );
+# MACD is bad if it is below the average
+#def isMACDBad  = (MACDValue < MACDAvg) and ( MACDValue < MACDValue[1] );
+# Buy when the macd crosses above and is higher than yesterday
+#def isMACDBuy = enableMACDCross and isMACDGood and (MACDValue[1] < MACDAvg[1]);
+# Sell when macd crosses below and is lower than yesterday
+#def isMACDSell = enableMACDCross and isMACDBad and (MACDValue[1] > MACDAvg[1]);
+
+
+## ############################################################
+## Track the bars since the last buy to avoid selling too soon.
+## ############################################################
+#def isStrategyBuy  =  isOBVMBuy or isMACDBuy;
+#def isStrategySell =  isOBVMSell or isMACDSell;
+#def barsSinceBuy = if isStrategyBuy 
+#                    then 0 else barsSinceBuy[1] + 1;
+#def okToSell = isStrategySell and (barsSinceBuy > minHoldingPeriod);
+#def okToBuy  = isStrategyBuy and ( ! isStrategySell );
+
+
+
+
+## ###################################
+## show labels for ATR and Stop Limits
+## ###################################
+#hint minimumHoldingBuyFactor: a factor that determines the minimum amount we must have before buying more
+#input minimumHoldingBuyFactor = 55;
+#hint minHolding: the minimum market value.  The amount we would be willing to lose if the price went to 0. Default=1000
+#input minHolding = 1000;
+#hint maximumHoldingFactor: a factor that determines the most we should have of the security at the current gain
+#input maximumHoldingFactor = 65;
+
+
+#def maxSellPercentGain = Round( (ATRSellFactor * currentATRPct * 100 / 2.5), 2);
+#def minBuyPercentGain  = Round( (ATRBuyFactor * currentATRPct * 100 / 1.75), 2 );
+
+#plot isSell = ( okToSell and (TSSellSignal or isOBVMSell or isMACDSell) );
+#def strongSell = ( okToSell and (TSSellSignal and isOBVMSell and isMACDSell) );
+#plot isBuy =  (TSBuySignal or ( okToBuy and (isOBVMBuy or isMACDBuy) )) ;
+#def strongBuy = (TSBuySignal or ( okToBuy and (isOBVMBuy and isMACDBuy) )) ;
+
+
+## ############################################################
+## Buy Orders
+## ############################################################
+#AddOrder( OrderType.BUY_TO_OPEN,
+#            isBuy,
+#            open[-1],
+#            tickColor = GetColor(1),
+#            arrowColor = GetColor(1),
+#            name = if TSBuySignal then "TSBuy" 
+#                    else if isOBVMBuy then "OBVMBuy"
+#                    else if isMACDBuy then "MACDBuy"
+#                    else "BUY"
+#);
+
+## ############################################################
+## Sell Orders
+## ############################################################
+#AddOrder( OrderType.SELL_TO_CLOSE,
+#            isSell,
+#            open[-1],
+#            tickColor = GetColor(0),
+#           arrowColor = GetColor(0),
+#            name = if TSSellSignal then "TSSell" 
+#                    else if isOBVMSell then "OBVMSell"
+#                    else if isMACDSell then "MACDSell"
+#                    else "SELL"
+#);
+
+# AddLabel( 1, # visibility, 
+#     "ATR=" + Round( lastATR, 1 )
+#     + ", ATR%=" + Round( currentATRPct * 100, 1 )
+#     + ", TS%=" + stopLimitPct
+#     + ", TRG=" + stopLimitPrc
+#     + ", LMT=" + Round(stopLimitPrc * 0.995, 2)
+#     ,
+#     if strongBuy then Color.GREEN 
+#     else if isBuy then Color.UPTICK
+#     else if isSell then Color.DOWNTICK
+#     else if strongSell then Color.LIGHT_RED
+#     else Color.GRAY
+# );
+
+## ###################################
+# AddLabel( 1, 
+#     "Buy SBMT BID>" + Round(trail, 2)
+#     + ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
+#     + ", Amt: " + max( ceil(trail * 2 * (1+currentATRPct)), 700 ) 
+#     ,
+#     if close < trail then Color.UPTICK 
+#     else Color.GRAY
+# );
+
+## ###################################
+# AddLabel( 1, 
+#     "Sell SBMT ASK<" + Round(trail / (1 - currentATRPct) / (1 - 0.0125), 2)
+#     + ", ATR=" + Round( currentATRPct * 100, 1 )
+#     + "%, CNCL MARK<" + Round(trail, 2)
+#     ,
+#     if close > trail then Color.DOWNTICK 
+#     else Color.GRAY
+# );
