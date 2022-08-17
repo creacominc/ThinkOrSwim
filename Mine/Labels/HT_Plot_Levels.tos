@@ -1,0 +1,70 @@
+## ###################
+## Notes
+## ###################
+declare hide_on_intraday;
+# - With some functions the chart adds 72 bars to the specified durations.  As a result, the numbers based on a time range will not match (eg On Balance Volume).
+# - Each section below will be enabled by an enablement switch and provides an indicator and possibly a buy/sell signal.
+
+#hint minHoldingPeriod: the minimum number of bars after a buy before a sell is allowed
+input minHoldingPeriod = 20;
+
+## ####################
+## Chart markers
+## ####################
+#hint ATRPeriod: ATR The number of bars used to calculate the Average True Range. Was 29.
+input ATRPeriod = 20;
+#hint ATRBuyFactor: ATR The multiplier of the ATR value.  Default 4.5.
+input ATRBuyFactor = 4.5;
+#hint ATRSellFactor: ATR The multiplier of the ATR value.  Default 4.5
+input ATRSellFactor = 4.5;
+#hint ATRaverageType: ATR The type of moving average to be used in calculations: simple, exponential, weighted, Wilder's, or Hull.
+input ATRaverageType = AverageType.WILDERS;
+def barNums = if close then (barnumber()) else double.nan;
+def lastBarNum = highestall( barNums );
+def firstBarNum = lastBarNum - minHoldingPeriod;
+def isAfterFirst = barnumber() > firstBarNum;
+def isLastBar = (barnumber() == lastBarNum);
+def isOnOrAfterLast = (barnumber() >= lastBarNum);
+
+def lowsSinceStart = if barnumber() > firstBarNum then (low) else double.nan;
+def lastDayLow  = if isLastBar then (low) else double.nan;
+def lastDayHigh = if isLastBar then (high) else double.nan;
+def lastDayClose = if isLastBar then (close) else double.nan;
+def lastATR     = if isLastBar then ATR(ATRPeriod, ATRaverageType) else lastATR[1];
+
+def atrFactor = (ATRBuyFactor + ATRSellFactor) / 2.0;
+def currentATRPct = lastATR / close;
+def stopLimitPct =  Round( ( (atrFactor * lastATR)/close ) * 100.0, 2);
+def stopLimitPrc =  Round( close - (atrFactor * lastATR), 2);
+
+plot lo20      = if isAfterFirst then lowestall( lowsSinceStart ) else double.nan;
+#plot lo20      = lowest( low, 20 );
+def lowestLastDayClose = lowestall( lastDayClose );
+def highestLastDayHigh = highestall( lastDayHigh );
+def lowestLastDayLow   = lowestall( lastDayLow );
+plot lastClose = if isOnOrAfterLast then lowestLastDayClose else double.nan;
+plot plusXATR  = if isOnOrAfterLast then highestLastDayHigh + (ATRSellFactor * lastATR ) else double.nan;
+plot plusATR   = if isOnOrAfterLast then highestLastDayHigh + lastATR else double.nan;
+plot lessXATR  = if isOnOrAfterLast then lowestLastDayLow - (ATRBuyFactor * lastATR ) else double.nan;
+plot lessATR   = if isOnOrAfterLast then lowestLastDayLow - lastATR else double.nan;
+plot plus5pct  = if isOnOrAfterLast then lowestLastDayClose * 1.05 else double.nan;
+plot less5pct  = if isOnOrAfterLast then lowestLastDayClose * 0.95 else double.nan;
+
+lo20.SetStyle( Curve.SHORT_DASH );
+lo20.SetDefaultColor( Color.Yellow );
+lastClose.SetStyle( Curve.SHORT_DASH );
+lastClose.SetDefaultColor( Color.Gray );
+plus5pct.SetStyle( Curve.SHORT_DASH );
+plus5pct.SetDefaultColor( Color.Gray );
+less5pct.SetStyle( Curve.SHORT_DASH );
+less5pct.SetDefaultColor( Color.Gray );
+
+plusATR.SetStyle( Curve.SHORT_DASH );
+plusATR.SetDefaultColor( Color.LIGHT_ORANGE );
+lessATR.SetStyle( Curve.SHORT_DASH );
+lessATR.SetDefaultColor( Color.LIGHT_ORANGE );
+plusXATR.SetStyle( Curve.MEDIUM_DASH );
+plusXATR.SetDefaultColor( Color.DARK_ORANGE );
+lessXATR.SetStyle( Curve.MEDIUM_DASH );
+lessXATR.SetDefaultColor( Color.DARK_ORANGE );
+
