@@ -242,36 +242,36 @@ lessXATR.SetDefaultColor( Color.DARK_ORANGE );
 #                    else "SELL"
 #);
 
-# AddLabel( 1, # visibility, 
-#     "ATR=" + Round( lastATR, 1 )
-#     + ", ATR%=" + Round( currentATRPct * 100, 1 )
-#     + ", TS%=" + stopLimitPct
-#     + ", TRG=" + stopLimitPrc
-#     + ", LMT=" + Round(stopLimitPrc * 0.995, 2)
-#     ,
-#     if strongBuy then Color.GREEN 
-#     else if isBuy then Color.UPTICK
-#     else if isSell then Color.DOWNTICK
-#     else if strongSell then Color.LIGHT_RED
-#     else Color.GRAY
-# );
+
+AddLabel( 1, # visibility, 
+    "ATR=" + Round( lastATR, 1 )
+    + ", ATR%=" + Round( currentATRPct * 100, 1 )
+    + ", TS%=" + stopLimitPct
+    + ", TRG=" + stopLimitPrc
+    + ", LMT=" + Round(stopLimitPrc * 0.995, 2)
+    ,
+    if strongBuy then Color.GREEN 
+    else if isBuy then Color.UPTICK
+    else if isSell then Color.DOWNTICK
+    else if strongSell then Color.LIGHT_RED
+    else Color.GRAY
+);
 
 ## ###################################
-# AddLabel( 1, 
-#     "Buy SBMT BID>" + Round(trail, 2)
-#     + ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
-#     + ", Amt: " + max( ceil(trail * 2 * (1+currentATRPct)), 700 ) 
-#     ,
-#     if close < trail then Color.UPTICK 
-#     else Color.GRAY
-# );
-
+AddLabel( 1, 
+    "Buy SBMT BID>" + Round(trail, 2)
+    + ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
+    + ", Amt: " + Max( Ceil(trail * 2 * (1 + currentATRPct)), 700 ) 
+    ,
+    if close < trail then Color.UPTICK 
+    else Color.GRAY
+);
 ## ###################################
-# AddLabel( 1, 
-#     "Sell SBMT ASK<" + Round(trail / (1 - currentATRPct) / (1 - 0.0125), 2)
-#     + ", ATR=" + Round( currentATRPct * 100, 1 )
-#     + "%, CNCL MARK<" + Round(trail, 2)
-#     ,
-#     if close > trail then Color.DOWNTICK 
-#     else Color.GRAY
-# );
+AddLabel( 1, 
+    "Sell SBMT ASK<" + Round(trail / (1 - currentATRPct) / (1 - 0.0125), 2)
+    + ", ATR=" + Round( currentATRPct * 100, 1 )
+    + "%, CNCL MARK<" + Round(trail, 2)
+    ,
+    if close > trail then Color.DOWNTICK 
+    else Color.GRAY
+);

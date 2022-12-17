@@ -16,8 +16,6 @@ input enableOnBalanceVolume = 1;
 #hint enableMACDCross: enable MACDCross strategy 
 input enableMACDCross = 1;
 
-
-
 ## ####################
 ## Chart markers
 ## ####################
@@ -29,72 +27,72 @@ input ATRBuyFactor = 4.5;
 input ATRSellFactor = 4.5;
 #hint ATRaverageType: ATR The type of moving average to be used in calculations: simple, exponential, weighted, Wilder's, or Hull.
 input ATRaverageType = AverageType.WILDERS;
-def barNums = if close then (barnumber()) else double.nan;
-def lastBarNum = highestall( barNums );
-def firstBarNum = lastBarNum - minHoldingPeriod;
-def isAfterFirst = barnumber() > firstBarNum;
-def isLastBar = (barnumber() == lastBarNum);
-def isOnOrAfterLast = (barnumber() >= lastBarNum);
+def barNums = if close then (BarNumber()) else Double.NaN;
+def lastBarNum = HighestAll( barNums );
+#def firstBarNum = lastBarNum - minHoldingPeriod;
+#def isAfterFirst = barnumber() > firstBarNum;
+def isLastBar = (BarNumber() == lastBarNum);
+#def isOnOrAfterLast = (barnumber() >= lastBarNum);
 
-def lowsSinceStart = if barnumber() > firstBarNum then (low) else double.nan;
-def lastDayLow  = if isLastBar then (low) else double.nan;
-def lastDayHigh = if isLastBar then (high) else double.nan;
-def lastDayClose = if isLastBar then (close) else double.nan;
+#def lowsSinceStart = if barnumber() > firstBarNum then (low) else double.nan;
+#def lastDayLow  = if isLastBar then (low) else double.nan;
+#def lastDayHigh = if isLastBar then (high) else double.nan;
+#def lastDayClose = if isLastBar then (close) else double.nan;
 def lastATR     = if isLastBar then ATR(ATRPeriod, ATRaverageType) else lastATR[1];
 
 def atrFactor = (ATRBuyFactor + ATRSellFactor) / 2.0;
 def currentATRPct = lastATR / close;
-def stopLimitPct =  Round( ( (atrFactor * lastATR)/close ) * 100.0, 2);
-def stopLimitPrc =  Round( close - (atrFactor * lastATR), 2);
+def stopLimitPct =  Round( ( (atrFactor * lastATR) / close ) * 100.0, 2);
+#def stopLimitPrc =  Round( close - (atrFactor * lastATR), 2);
 
-plot lo20      = if isAfterFirst then lowestall( lowsSinceStart ) else double.nan;
+#plot lo20      = if isAfterFirst then lowestall( lowsSinceStart ) else double.nan;
 #plot lo20      = lowest( low, 20 );
-def lowestLastDayClose = lowestall( lastDayClose );
-def highestLastDayHigh = highestall( lastDayHigh );
-def lowestLastDayLow   = lowestall( lastDayLow );
-plot lastClose = if isOnOrAfterLast then lowestLastDayClose else double.nan;
-plot plusXATR  = if isOnOrAfterLast then highestLastDayHigh + (ATRSellFactor * lastATR ) else double.nan;
-plot plusATR   = if isOnOrAfterLast then highestLastDayHigh + lastATR else double.nan;
-plot lessXATR  = if isOnOrAfterLast then lowestLastDayLow - (ATRBuyFactor * lastATR ) else double.nan;
-plot lessATR   = if isOnOrAfterLast then lowestLastDayLow - lastATR else double.nan;
-plot plus5pct  = if isOnOrAfterLast then lowestLastDayClose * 1.05 else double.nan;
-plot less5pct  = if isOnOrAfterLast then lowestLastDayClose * 0.95 else double.nan;
+#def lowestLastDayClose = lowestall( lastDayClose );
+#def highestLastDayHigh = highestall( lastDayHigh );
+#def lowestLastDayLow   = lowestall( lastDayLow );
+#plot lastClose = if isOnOrAfterLast then lowestLastDayClose else double.nan;
+#plot plusXATR  = if isOnOrAfterLast then highestLastDayHigh + (ATRSellFactor * lastATR ) else double.nan;
+#plot plusATR   = if isOnOrAfterLast then highestLastDayHigh + lastATR else double.nan;
+#plot lessXATR  = if isOnOrAfterLast then lowestLastDayLow - (ATRBuyFactor * lastATR ) else double.nan;
+#plot lessATR   = if isOnOrAfterLast then lowestLastDayLow - lastATR else double.nan;
+#plot plus5pct  = if isOnOrAfterLast then lowestLastDayClose * 1.05 else double.nan;
+#plot less5pct  = if isOnOrAfterLast then lowestLastDayClose * 0.95 else double.nan;
 
-lo20.SetStyle( Curve.SHORT_DASH );
-lo20.SetDefaultColor( Color.Yellow );
-lastClose.SetStyle( Curve.SHORT_DASH );
-lastClose.SetDefaultColor( Color.Gray );
-plus5pct.SetStyle( Curve.SHORT_DASH );
-plus5pct.SetDefaultColor( Color.Gray );
-less5pct.SetStyle( Curve.SHORT_DASH );
-less5pct.SetDefaultColor( Color.Gray );
+#lo20.SetStyle( Curve.SHORT_DASH );
+#lo20.SetDefaultColor( Color.Yellow );
+#lastClose.SetStyle( Curve.SHORT_DASH );
+#lastClose.SetDefaultColor( Color.Gray );
+#plus5pct.SetStyle( Curve.SHORT_DASH );
+#plus5pct.SetDefaultColor( Color.Gray );
+#less5pct.SetStyle( Curve.SHORT_DASH );
+#less5pct.SetDefaultColor( Color.Gray );
 
-plusATR.SetStyle( Curve.SHORT_DASH );
-plusATR.SetDefaultColor( Color.LIGHT_ORANGE );
-lessATR.SetStyle( Curve.SHORT_DASH );
-lessATR.SetDefaultColor( Color.LIGHT_ORANGE );
-plusXATR.SetStyle( Curve.MEDIUM_DASH );
-plusXATR.SetDefaultColor( Color.DARK_ORANGE );
-lessXATR.SetStyle( Curve.MEDIUM_DASH );
-lessXATR.SetDefaultColor( Color.DARK_ORANGE );
+#plusATR.SetStyle( Curve.SHORT_DASH );
+#plusATR.SetDefaultColor( Color.LIGHT_ORANGE );
+#lessATR.SetStyle( Curve.SHORT_DASH );
+#lessATR.SetDefaultColor( Color.LIGHT_ORANGE );
+#lusXATR.SetStyle( Curve.MEDIUM_DASH );
+#plusXATR.SetDefaultColor( Color.DARK_ORANGE );
+#lessXATR.SetStyle( Curve.MEDIUM_DASH );
+#lessXATR.SetDefaultColor( Color.DARK_ORANGE );
 
 
 ## #######################
 ## ATR Trailing Stop Limit
 ## #######################
-Assert(ATRFactor > 0, "'atr factor' must be positive: " + ATRFactor);
+Assert(atrFactor > 0, "'atr factor' must be positive: " + atrFactor);
 def HiLo = Min(high - low, 1.5 * Average(high - low, ATRPeriod));
 def HRef = if low <= high[1]    then high - close[1]    else (high - close[1]) - 0.5 * (low - high[1]);
 def LRef = if high >= low[1]    then close[1] - low     else (close[1] - low) - 0.5 * (low[1] - high);
 def trueRange = Max(HiLo, Max(HRef, LRef));
-def loss = ATRFactor * MovingAverage( ATRaverageType, trueRange, ATRPeriod);
+def loss = atrFactor * MovingAverage( ATRaverageType, trueRange, ATRPeriod);
 def state = {default init, long, short};
 def trail;
 switch (state[1]) {
 case init:
     if (!IsNaN(loss)) {
-            state = state.long;
-            trail =  close - loss;
+        state = state.long;
+        trail =  close - loss;
     } else {
         state = state.init;
         trail = Double.NaN;
@@ -207,24 +205,20 @@ input minHolding = 1000;
 input maximumHoldingFactor = 65;
 
 
-def maxSellPercentGain = Round( (ATRSellFactor * currentATRPct * 100 / 2.5), 2);
-def minBuyPercentGain  = Round( (ATRBuyFactor * currentATRPct * 100 / 1.75), 2 );
+#def maxSellPercentGain = Round( (ATRSellFactor * currentATRPct * 100 / 2.5), 2);
+#def minBuyPercentGain  = Round( (ATRBuyFactor * currentATRPct * 100 / 1.75), 2 );
 
 plot isSell = ( okToSell and (TSSellSignal or isOBVMSell or isMACDSell) );
 def strongSell = ( okToSell and (TSSellSignal and isOBVMSell and isMACDSell) );
 plot isBuy =  (TSBuySignal or ( okToBuy and (isOBVMBuy or isMACDBuy) )) ;
 def strongBuy = (TSBuySignal or ( okToBuy and (isOBVMBuy and isMACDBuy) )) ;
-
+isSell.SetHiding( 1 );
+isBuy.SetHiding( 1 );
 
 ## ############################################################
 ## Buy Orders
 ## ############################################################
-AddOrder( OrderType.BUY_TO_OPEN,
-            isBuy,
-            open[-1],
-            tickColor = GetColor(1),
-            arrowColor = GetColor(1),
-            name = if TSBuySignal then "TSBuy" 
+AddOrder(OrderType.BUY_TO_OPEN, isBuy, open[-1], tickcolor = GetColor(1), arrowcolor = GetColor(1), name = if TSBuySignal then "TSBuy" 
                     else if isOBVMBuy then "OBVMBuy"
                     else if isMACDBuy then "MACDBuy"
                     else "BUY"
@@ -234,48 +228,42 @@ AddOrder( OrderType.BUY_TO_OPEN,
 ## ############################################################
 ## Sell Orders
 ## ############################################################
-AddOrder( OrderType.SELL_TO_CLOSE,
-            isSell,
-            open[-1],
-            tickColor = GetColor(0),
-            arrowColor = GetColor(0),
-            name = if TSSellSignal then "TSSell" 
+AddOrder(OrderType.SELL_TO_CLOSE, isSell, open[-1], tickcolor = GetColor(0), arrowcolor = GetColor(0), name = if TSSellSignal then "TSSell" 
                     else if isOBVMSell then "OBVMSell"
                     else if isMACDSell then "MACDSell"
                     else "SELL"
 );
 
 
-AddLabel( 1, # visibility, 
-    "ATR=" + Round( lastATR, 1 )
-    + ", ATR%=" + Round( currentATRPct * 100, 1 )
-    + ", TS%=" + stopLimitPct
-    + ", TRG=" + stopLimitPrc
-    + ", LMT=" + Round(stopLimitPrc * 0.995, 2)
-    ,
-    if strongBuy then Color.GREEN 
-    else if isBuy then Color.UPTICK
-    else if isSell then Color.DOWNTICK
-    else if strongSell then Color.LIGHT_RED
-    else Color.GRAY
-);
+#AddLabel( 1, # visibility, 
+#    "ATR=" + Round( lastATR, 1 )
+#    + ", ATR%=" + Round( currentATRPct * 100, 1 )
+#    + ", TS%=" + stopLimitPct
+#    + ", TRG=" + stopLimitPrc
+#    + ", LMT=" + Round(stopLimitPrc * 0.995, 2)
+#    ,
+#    if strongBuy then Color.GREEN 
+#    else if isBuy then Color.UPTICK
+#    else if isSell then Color.DOWNTICK
+#    else if strongSell then Color.LIGHT_RED
+#    else Color.GRAY
+#);
 
-
-## ###################################
-AddLabel( 1, 
-    "Buy SBMT BID>" + Round(trail, 2)
-    + ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
-    + ", Amt: " + max( ceil(trail * 2 * (1+currentATRPct)), 700 ) 
-    ,
-    if close < trail then Color.UPTICK 
-    else Color.GRAY
-);
-## ###################################
-AddLabel( 1, 
-    "Sell SBMT ASK<" + Round(trail / (1 - currentATRPct) / (1 - 0.0125), 2)
-    + ", ATR=" + Round( currentATRPct * 100, 1 )
-    + "%, CNCL MARK<" + Round(trail, 2)
-    ,
-    if close > trail then Color.DOWNTICK 
-    else Color.GRAY
-);
+### ###################################
+#AddLabel( 1, 
+#    "Buy SBMT BID>" + Round(trail, 2)
+#    + ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
+#    + ", Amt: " + Max( Ceil(trail * 2 * (1 + currentATRPct)), 700 ) 
+#    ,
+#    if close < trail then Color.UPTICK 
+#    else Color.GRAY
+#);
+### ###################################
+#AddLabel( 1, 
+#    "Sell SBMT ASK<" + Round(trail / (1 - currentATRPct) / (1 - 0.0125), 2)
+#    + ", ATR=" + Round( currentATRPct * 100, 1 )
+#    + "%, CNCL MARK<" + Round(trail, 2)
+#    ,
+#    if close > trail then Color.DOWNTICK 
+#    else Color.GRAY
+#);

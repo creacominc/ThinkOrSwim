@@ -1,0 +1,188 @@
+
+## ###################
+## enablement switches
+## ###################
+#hint enableOnBalanceVolume:  enable OnBalanceVolumeModified strategy
+input enableOnBalanceVolume = 1;
+#hint enableMACDCross: enable MACDCross strategy 
+input enableMACDCross = 1;
+
+
+
+
+
+
+#hint minHoldingPeriod: the minimum number of bars after a buy before a sell is allowed
+#input minHoldingPeriod = 20;
+
+## ###################
+## enablement switches
+## ###################
+#hint enableOnBalanceVolume:  enable OnBalanceVolumeModified strategy
+#input enableOnBalanceVolume = 1;
+#hint enableMACDCross: enable MACDCross strategy 
+#input enableMACDCross = 1;
+
+
+
+## #######################
+## ATR Trailing Stop Limit
+## #######################
+#hint ATRPeriod: ATR The number of bars used to calculate the Average True Range. Was 29.
+input ATRPeriod = 20;
+#hint ATRaverageType: ATR The type of moving average to be used in calculations: simple, exponential, weighted, Wilder's, or Hull.
+input ATRaverageType = AverageType.WILDERS;
+def atrFactor = 4.5;
+#Assert(ATRFactor > 0, "'atr factor' must be positive: " + ATRFactor);
+def HiLo = Min(high - low, 1.5 * Average(high - low, ATRPeriod));
+def HRef = if low <= high[1]    then high - close[1]    else (high - close[1]) - 0.5 * (low - high[1]);
+def LRef = if high >= low[1]    then close[1] - low     else (close[1] - low) - 0.5 * (low[1] - high);
+def trueRange = Max(HiLo, Max(HRef, LRef));
+def loss = ATRFactor * MovingAverage( ATRaverageType, trueRange, ATRPeriod);
+def state = {default init, long, short};
+def trail;
+switch (state[1]) {
+case init:
+    if (!IsNaN(loss)) {
+            state = state.long;
+            trail =  close - loss;
+    } else {
+        state = state.init;
+        trail = Double.NaN;
+    }
+case long:
+    if (close > trail[1]) {
+        state = state.long;
+        trail = Max(trail[1], close - loss);
+    } else {
+        state = state.short;
+        trail = close + loss;
+    }
+case short:
+    if (close < trail[1]) {
+        state = state.short;
+        trail = Min(trail[1], close + loss);
+    } else {
+        state = state.long;
+        trail =  close - loss;
+    }
+}
+def isTSBuy  = Crosses(state == state.long, 0, CrossingDirection.ABOVE);
+def isTSSell = Crosses(state == state.short, 0, CrossingDirection.ABOVE);
+
+
+
+
+
+## ###################
+## Volume : OnBalanceVolumeModified
+## Buy when the OBVM is increasing and crosses above the signal while the volume is greater than the average
+## ###################
+#hint OBVMLength:  the number of bars for the OnBalanceVolume calculation. (Likely plus 71 bars.) Default is 7.
+input OBVMLength = 7;
+#hint OBVMSignalLength:  the number of bars for the OBVM Signal line.  OBVMLength must be less thsn the Signal Length.  Default is 10.
+input OBVMSignalLength = 10;
+Assert( OBVMLength < OBVMSignalLength, "OBVM Length (" + OBVMLength + ") must be less than the Signal Length (" + OBVMSignalLength + ")" );
+#hint OBVMAverageType: average type used for OBVM
+input OBVMAverageType = AverageType.EXPONENTIAL;
+#hint VolumeAvgLength: bars for volume average.  default is 50.
+input VolumeAvgLength = 50;
+#
+def Vol = Sign(close - close[1]) * volume;
+def VolAvg = Average( volume, VolumeAvgLength );
+#
+def OBV = reference OnBalanceVolume();
+def OBVM = MovingAverage( OBVMAverageType, OBV, OBVMLength );
+def OBVMSignal = MovingAverage( OBVMAverageType, OBVM, OBVMSignalLength );
+#
+def isVolGrowing = Vol > VolAvg;
+# OBVM is good if it is higher than the signal and moving up.
+def isOBVMGood = (OBVM > OBVMSignal) and (OBVM > OBVM[1]);
+# OBVM is bad if it is lower than the signal and moving down.
+def isOBVMBad = (OBVM < OBVMSignal) and (OBVM < OBVM[1]);
+# Buy on OBVM cross up - the prior OBVM was below the prior signal
+def isOBVMBuy = enableOnBalanceVolume and isOBVMGood and (OBVM[1] < OBVMSignal[1]) and isVolGrowing;
+# Sell on OBVM cross down - the prior OBVM was above the prior signal
+def isOBVMSell = enableOnBalanceVolume and isOBVMBad and (OBVM[1] > OBVMSignal[1]);
+#
+#AddLabel( 1
+#    , "OBV: " + OBV+ ", OBVM: " + OBVM + ", Signal: " + OBVMSignal + ",  volume: " + Vol + ", Average: " + VolAvg
+#    , Color.Cyan
+#    );
+
+
+
+
+## ###################
+## MACD Cross: from MACDCustom
+## Buy when the MACD crosses above the Signal
+## ###################
+#hint MACDFastLength:  default=12
+input MACDFastLength = 12;
+#hint MACDSlowLength: default=26
+input MACDSlowLength = 26;
+#hint MACDLength: default=9
+input MACDLength = 9;
+#hint MACDAverageType: exponential
+input MACDAverageType = AverageType.EXPONENTIAL;
+def MACDValue = MovingAverage( MACDAverageType, close, MACDFastLength ) - MovingAverage( MACDAverageType, close, MACDSlowLength );
+def MACDAvg   = MovingAverage( MACDAverageType, MACDValue, MACDLength );
+# MACD is good if it is above the average
+def isMACDGood = (MACDValue > MACDAvg) and ( MACDValue > MACDValue[1] );
+# MACD is bad if it is below the average
+def isMACDBad  = (MACDValue < MACDAvg) and ( MACDValue < MACDValue[1] );
+# Buy when the macd crosses above and is higher than yesterday
+def isMACDBuy = enableMACDCross and isMACDGood and (MACDValue[1] < MACDAvg[1]);
+# Sell when macd crosses below and is lower than yesterday
+def isMACDSell = enableMACDCross and isMACDBad and (MACDValue[1] > MACDAvg[1]);
+
+
+
+## ###################
+## market forcast
+## ###################
+def momentum = MarketForecast().Momentum;
+def nearterm = MarketForecast().NearTerm;
+def intermediate = MarketForecast().Intermediate;
+
+def marketValUpper = 65;
+def marketValLower = 40;
+
+
+def buySellStrength = 0
+                + (if isTSBuy    then 3 else 0)
+                + (if isTSSell   then -3 else 0)
+                + (if isMACDBuy  then 1 else 0)
+                + (if isMACDSell then -1 else 0)
+                + (if isOBVMBuy  then 1 else 0)
+                + (if isOBVMSell then -1 else 0)
+                ;
+def sigStrength = if (buySellStrength == 0) then 0 else ( buySellStrength )
+                + (if isMACDGood then 1 else 0)
+                + (if isMACDBad  then -1 else 0)
+                + (if isOBVMGood then 1 else 0)
+                + (if isOBVMBad  then -1 else 0)
+                + (if momentum > marketValUpper then 1 else 0)
+                + (if nearterm > marketValUpper then 1 else 0)
+                + (if intermediate > marketValUpper then 1 else 0)
+                + (if momentum < marketValLower then -1 else 0)
+                + (if nearterm < marketValLower then -1 else 0)
+                + (if intermediate < marketValLower then -1 else 0)
+                ;
+
+# ########################### Label for column
+AddLabel( yes
+    , if (sigStrength == 0) then " " else AbsValue( sigStrength )
+    + " " +
+         if isTSSell                 then "S TS"
+    else if isTSBuy                  then "B TS"
+    else if isOBVMSell               then “S OBVM”
+    else if isMACDSell               then “S MacD”
+    else if isOBVMBuy                then "B OBVM"
+    else if isMACDBuy                then “B MacD"
+    else  " "
+    , if (buySellStrength > 0) then color.green else if (buySellStrength < 0) then color.red else color.WHITE );
+
+
+
+
