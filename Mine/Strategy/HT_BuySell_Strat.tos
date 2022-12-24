@@ -5,8 +5,25 @@ declare hide_on_intraday;
 # - With some functions the chart adds 72 bars to the specified durations.  As a result, the numbers based on a time range will not match (eg On Balance Volume).
 # - Each section below will be enabled by an enablement switch and provides an indicator and possibly a buy/sell signal.
 
+## ###################
+## Optional Enter-After
+## ###################
+# #hint enterAfterDate:  enter an order after this date - 0 disables.
+# def enterAfterDate = 0;
+def buyAfterIsTrue = 1; # (GetYYYYMMDD() >= enterAfterDate);
+
+## ###################
+## Optional Enter-Above
+## ###################
+# #hint enterAbovePrice:  enter an order when above this price - 0 disables.
+# #input enterAbovePrice = 0;
+def buyOverIsTrue = 0; # if (enterAbovePrice > 0) then (close >= enterAbovePrice) else 0;
+
 #hint minHoldingPeriod: the minimum number of bars after a buy before a sell is allowed
 input minHoldingPeriod = 20;
+
+#hint buyAmount: the dollar value target for purchases.  n=buyAmount/price
+input buyAmount = 2000;
 
 ## ###################
 ## enablement switches
@@ -15,6 +32,14 @@ input minHoldingPeriod = 20;
 input enableOnBalanceVolume = 1;
 #hint enableMACDCross: enable MACDCross strategy 
 input enableMACDCross = 1;
+
+## ###################
+## Disable if too early
+## ###################
+# #hint minimumSecondsSinceBell
+# #input minimumSecondsSinceBell = 900;
+def notTooEarly = 1; #  if (GetAggregationPeriod() < AggregationPeriod.DAY) then (GetTime() > (RegularTradingStart(GetYYYYMMDD()) + minimumSecondsSinceBell)) else 1;
+
 
 ## ####################
 ## Chart markers
@@ -27,22 +52,22 @@ input ATRBuyFactor = 4.5;
 input ATRSellFactor = 4.5;
 #hint ATRaverageType: ATR The type of moving average to be used in calculations: simple, exponential, weighted, Wilder's, or Hull.
 input ATRaverageType = AverageType.WILDERS;
-def barNums = if close then (BarNumber()) else Double.NaN;
-def lastBarNum = HighestAll( barNums );
+#def barNums = if close then (barnumber()) else double.nan;
+#def lastBarNum = highestall( barNums );
 #def firstBarNum = lastBarNum - minHoldingPeriod;
 #def isAfterFirst = barnumber() > firstBarNum;
-def isLastBar = (BarNumber() == lastBarNum);
+#def isLastBar = (barnumber() == lastBarNum);
 #def isOnOrAfterLast = (barnumber() >= lastBarNum);
 
 #def lowsSinceStart = if barnumber() > firstBarNum then (low) else double.nan;
 #def lastDayLow  = if isLastBar then (low) else double.nan;
 #def lastDayHigh = if isLastBar then (high) else double.nan;
 #def lastDayClose = if isLastBar then (close) else double.nan;
-def lastATR     = if isLastBar then ATR(ATRPeriod, ATRaverageType) else lastATR[1];
+#def lastATR     = if isLastBar then ATR(ATRPeriod, ATRaverageType) else lastATR[1];
 
 def atrFactor = (ATRBuyFactor + ATRSellFactor) / 2.0;
-def currentATRPct = lastATR / close;
-def stopLimitPct =  Round( ( (atrFactor * lastATR) / close ) * 100.0, 2);
+#def currentATRPct = lastATR / close;
+#def stopLimitPct =  Round( ( (atrFactor * lastATR)/close ) * 100.0, 2);
 #def stopLimitPrc =  Round( close - (atrFactor * lastATR), 2);
 
 #plot lo20      = if isAfterFirst then lowestall( lowsSinceStart ) else double.nan;
@@ -71,7 +96,7 @@ def stopLimitPct =  Round( ( (atrFactor * lastATR) / close ) * 100.0, 2);
 #plusATR.SetDefaultColor( Color.LIGHT_ORANGE );
 #lessATR.SetStyle( Curve.SHORT_DASH );
 #lessATR.SetDefaultColor( Color.LIGHT_ORANGE );
-#lusXATR.SetStyle( Curve.MEDIUM_DASH );
+#plusXATR.SetStyle( Curve.MEDIUM_DASH );
 #plusXATR.SetDefaultColor( Color.DARK_ORANGE );
 #lessXATR.SetStyle( Curve.MEDIUM_DASH );
 #lessXATR.SetDefaultColor( Color.DARK_ORANGE );
@@ -116,12 +141,12 @@ case short:
 }
 def TSBuySignal = Crosses(state == state.long, 0, CrossingDirection.ABOVE);
 def TSSellSignal = Crosses(state == state.short, 0, CrossingDirection.ABOVE);
-plot TrailingStop = trail;
-TrailingStop.SetPaintingStrategy(PaintingStrategy.POINTS);
-TrailingStop.DefineColor( "Buy", GetColor(1) );
-TrailingStop.DefineColor( "Sell", GetColor(0) );
-TrailingStop.AssignValueColor( if state == state.long    then TrailingStop.Color( "Sell" )    else TrailingStop.Color( "Buy" ) );
-
+#plot TrailingStop = trail;
+#TrailingStop.SetHiding( 1 );
+#TrailingStop.SetPaintingStrategy(PaintingStrategy.POINTS);
+#TrailingStop.DefineColor( "Buy", GetColor(6) );
+#TrailingStop.DefineColor( "Sell", GetColor(5) );
+#TrailingStop.AssignValueColor( if state == state.long    then #TrailingStop.Color( "Sell" )    else TrailingStop.Color( "Buy" ) );
 
 
 ## ###################
@@ -184,13 +209,13 @@ def isMACDSell = enableMACDCross and isMACDBad and (MACDValue[1] > MACDAvg[1]);
 ## ############################################################
 ## Track the bars since the last buy to avoid selling too soon.
 ## ############################################################
-def isStrategyBuy  =  isOBVMBuy or isMACDBuy;
-def isStrategySell =  isOBVMSell or isMACDSell;
+def isStrategyBuy  =  isOBVMBuy or isMACDBuy or TSBuySignal;
+def isStrategySell =  isOBVMSell or isMACDSell or TSSellSignal;
 def barsSinceBuy = if isStrategyBuy 
                     then 0 else barsSinceBuy[1] + 1;
 def okToSell = isStrategySell and (barsSinceBuy > minHoldingPeriod);
-def okToBuy  = isStrategyBuy and ( ! isStrategySell );
-
+def okToBuy  = buyAfterIsTrue and isStrategyBuy and ( ! isStrategySell );
+# def okToBuy  =  isStrategyBuy and ( ! isStrategySell );
 
 
 
@@ -208,62 +233,71 @@ input maximumHoldingFactor = 65;
 #def maxSellPercentGain = Round( (ATRSellFactor * currentATRPct * 100 / 2.5), 2);
 #def minBuyPercentGain  = Round( (ATRBuyFactor * currentATRPct * 100 / 1.75), 2 );
 
-plot isSell = ( okToSell and (TSSellSignal or isOBVMSell or isMACDSell) );
-def strongSell = ( okToSell and (TSSellSignal and isOBVMSell and isMACDSell) );
-plot isBuy =  (TSBuySignal or ( okToBuy and (isOBVMBuy or isMACDBuy) )) ;
-def strongBuy = (TSBuySignal or ( okToBuy and (isOBVMBuy and isMACDBuy) )) ;
+plot isSell =  okToSell ;
+plot isBuy =  notTooEarly and (buyOverIsTrue or okToBuy);;
 isSell.SetHiding( 1 );
 isBuy.SetHiding( 1 );
+#strongSell.SetHiding( 1 );
+#strongBuy.SetHiding( 1 );
 
 ## ############################################################
 ## Buy Orders
 ## ############################################################
-AddOrder(OrderType.BUY_TO_OPEN, isBuy, open[-1], tickcolor = GetColor(1), arrowcolor = GetColor(1), name = if TSBuySignal then "TSBuy" 
+AddOrder( OrderType.BUY_TO_OPEN,
+            isBuy,
+            open[-1],
+            tradeSize = Max( 1.0, Floor( buyAmount / open[-1] ) ),
+            tickColor = GetColor(1),
+            arrowColor = GetColor(1),
+            name = if TSBuySignal then "TSBuy" 
                     else if isOBVMBuy then "OBVMBuy"
                     else if isMACDBuy then "MACDBuy"
                     else "BUY"
 );
 
-
 ## ############################################################
 ## Sell Orders
 ## ############################################################
-AddOrder(OrderType.SELL_TO_CLOSE, isSell, open[-1], tickcolor = GetColor(0), arrowcolor = GetColor(0), name = if TSSellSignal then "TSSell" 
+AddOrder( OrderType.SELL_TO_CLOSE,
+            isSell,
+            open[-1],
+            tickColor = GetColor(0),
+            arrowColor = GetColor(0),
+            name = if TSSellSignal then "TSSell" 
                     else if isOBVMSell then "OBVMSell"
                     else if isMACDSell then "MACDSell"
                     else "SELL"
 );
 
+# AddLabel( 1, # visibility, 
+#     "ATR=" + Round( lastATR, 1 )
+#     + ", ATR%=" + Round( currentATRPct * 100, 1 )
+#     + ", TS%=" + stopLimitPct
+#     + ", Yld=" + Round( GetYield() * 100, 1 )
+#     #+ ", TRG=" + stopLimitPrc
+#     #+ ", LMT=" + Round(stopLimitPrc * 0.995, 2)
+#     ,
+#     if isBuy then Color.UPTICK
+#     else if isSell then Color.DOWNTICK
+#     else Color.GRAY
+# );
 
-#AddLabel( 1, # visibility, 
-#    "ATR=" + Round( lastATR, 1 )
-#    + ", ATR%=" + Round( currentATRPct * 100, 1 )
-#    + ", TS%=" + stopLimitPct
-#    + ", TRG=" + stopLimitPrc
-#    + ", LMT=" + Round(stopLimitPrc * 0.995, 2)
-#    ,
-#    if strongBuy then Color.GREEN 
-#    else if isBuy then Color.UPTICK
-#    else if isSell then Color.DOWNTICK
-#    else if strongSell then Color.LIGHT_RED
-#    else Color.GRAY
-#);
+## ###################################
+# AddLabel( 1, 
+#     "Buy BID>" + Round( if (close<trail) then trail else (close*1.05), 2)
+#     #+ ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
+#     #+ ", Amt: " + max( ceil(trail * 2 * (1+currentATRPct)), 700 ) 
+#     ,
+#     if close < trail then Color.UPTICK 
+#     else Color.GRAY
+# );
 
-### ###################################
-#AddLabel( 1, 
-#    "Buy SBMT BID>" + Round(trail, 2)
-#    + ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
-#    + ", Amt: " + Max( Ceil(trail * 2 * (1 + currentATRPct)), 700 ) 
-#    ,
-#    if close < trail then Color.UPTICK 
-#    else Color.GRAY
-#);
-### ###################################
-#AddLabel( 1, 
-#    "Sell SBMT ASK<" + Round(trail / (1 - currentATRPct) / (1 - 0.0125), 2)
-#    + ", ATR=" + Round( currentATRPct * 100, 1 )
-#    + "%, CNCL MARK<" + Round(trail, 2)
-#    ,
-#    if close > trail then Color.DOWNTICK 
-#    else Color.GRAY
-#);
+## ###################################
+# AddLabel( 1, 
+#     "Sell ASK<" + Round(trail / (1 - currentATRPct) / (1 - 0.0125), 2)
+#     + ", ATR=" + Round( currentATRPct * 100, 1 )
+#     + "%, CNCL MARK<" + Round(trail, 2)
+#     ,
+#     if close > trail then Color.DOWNTICK 
+#     else Color.GRAY
+# );GetTime() < RegularTradingStart(GetYYYYMMDD());
