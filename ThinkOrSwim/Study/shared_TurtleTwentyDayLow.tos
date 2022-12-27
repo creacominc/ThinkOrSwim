@@ -1,0 +1,6 @@
+
+input DaysBack = 20;
+ 
+def lowt = fold  count = 1 to daysback+1 with temp=low  do if low[count] < low and low[count] < temp then low[count] else temp;
+ 
+plot plow = lowt;

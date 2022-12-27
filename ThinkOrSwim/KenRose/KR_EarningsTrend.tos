@@ -1,0 +1,58 @@
+
+#follow #KRose_TDA on twitter for updates to this and other custom scripts
+# http://tos.mx/UZvC62 
+#This study is used for Ken Rose's Generating Income with Dividend Stocks webcast Monday's 7PM ET
+#Scripting Studies on Thinkorswim Tuesday nights at 5:30PM ET  
+#     https://events.thinkorswim.com/#/webcast 
+
+declare upper;
+input Label_Color_Choice = {"magenta", "green", "pink", "orange", default "cyan", "red", "blue", "grey", "violet"};
+input Show_Change_From_52_Week_High = Yes;
+input Show_Change_From_52_Week_Low = Yes;
+input Show_New_52_Week_High =Yes;
+input Show_NEW_52_Week_Low = Yes;
+Input Show_Price_Percentage_In_52Week_Range = Yes;
+input Show_PE_Ratio = Yes;
+input Show_Yield = Yes;
+input Show_Payout_Ratio = Yes;
+input Show_YTD = Yes;
+
+# The following line checks if the chart is a Daily Aggregation. 1=True
+
+def IsDaily = GetAggregationPeriod() == AggregationPeriod.DAY ;
+def IsWeekly = GetAggregationPeriod() == AggregationPeriod.week;
+def Ismonthly = GetAggregationPeriod() == AggregationPeriod.month ;
+######################YTD##############
+def yearstart = getyear() * 10000 + 101;
+def tradedays = countTradingDays(yearstart, GetYYYYMMDD());
+def closeEOY = getvalue(close, tradedays, 255);
+def YTDnetchange = ((close - closeEOY)/closeEOY) * 100;
+def value = round(YTDnetchange, 2);
+AddLabel(Show_YTD, "YTD change " + value +  " %", GetColor(label_color_choice));
+############################### PE Ratio ###########################################
+def AE = if IsNaN(GetActualEarnings()) then 0 else GetActualEarnings();
+def EPS_TTM = if isdaily then Sum(AE, 252)else if isweekly then sum(AE,52)else if ismonthly then sum(AE,12)else double.NaN;
+def pe = Round(close / EPS_TTM, 2);
+AddLabel((IsDaily or isweekly or ismonthly) and Show_PE_Ratio, "P/E Ratio:" + if EPS_TTM then " " + pe else " N/A", GetColor(label_color_choice));
+###################### Yield #########################################################
+def DivYield = Round((GetYield() * 100), 2);
+AddLabel((IsDaily or isweekly or ismonthly) and Show_Yield, "Div Yield: " + DivYield + "%", GetColor(label_color_choice));
+######################### Payout Ratio ###############################################
+rec DCont = if IsNaN(GetDividend()) then DCont[1] else GetDividend();
+def DivA = if DCont <> 0 then DCont * 4 else Double.NaN;
+def payout_ratio = Round(DivA * 100 / EPS_TTM, 2);
+AddLabel((IsDaily or isweekly or ismonthly) and Show_Payout_Ratio, if IsNaN(payout_ratio) then "" else "PayOutRatio: " + payout_ratio + "%", GetColor(label_color_choice));
+######################### 52 Week High Offset Below #################################
+def length = if isdaily then 252 else if isweekly then 52 else if ismonthly then 12 else double.NaN; 
+def top = highest(high, length);
+def bottom = lowest(low,length);
+def prctDrop = ((close/top)-1);
+def prctRise = ((close/Bottom)-1);
+def prcntPlace = (close-bottom)/(top-bottom);
+def NewHigh = high == top;
+def NewLow = low == bottom;
+AddLabel((IsDaily or isweekly or ismonthly) and Show_Change_From_52_Week_High and !NewHigh, " % down off 52 WK high: ( " +  AsPercent(prctDrop) + " )  ", GetColor(Label_Color_Choice));
+AddLabel((IsDaily or isweekly or ismonthly) and NewHigh and Show_New_52_Week_High, "new 52-week high TODAY", (GetColor(label_color_choice)));
+AddLabel((IsDaily or isweekly or ismonthly) and Show_Change_From_52_Week_Low  and !NewLow, " % up off 52 WK low: ( " +  AsPercent(prctRise) + " )  ", GetColor(Label_Color_Choice));
+AddLabel((IsDaily or isweekly or ismonthly) and Show_Price_Percentage_In_52Week_Range  and !NewLow, " % place in 52 WK Range: ( " +  AsPercent(prcntPlace) + " )  ", GetColor(Label_Color_Choice));
+AddLabel((IsDaily or isweekly or ismonthly) and NewLow and Show_New_52_Week_Low, "new 52-week low TODAY", (GetColor(label_color_choice)));

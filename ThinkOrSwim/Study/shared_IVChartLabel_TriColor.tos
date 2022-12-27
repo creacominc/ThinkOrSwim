@@ -1,0 +1,16 @@
+# ST_IV_Percentile_TriColor
+# 03/25/18
+
+defineGlobalColor("67%+", color.red);
+defineGlobalColor("34-66%", color.yellow);
+defineGLobalCOlor("33%-", color.green);
+
+input length = 252;
+def iv = if IsNaN(imp_volatility()) then iv[1] else imp_volatility();
+
+def ivHi = Highest(iv, length); 
+def ivLo = Lowest(iv, length);
+def ivRange = ivHi - ivLo;
+def ivp = Round( 100 * (imp_volatility() - ivLo) / ivRange, 1) ; 
+
+AddLabel(yes, "IV%: " + ivp, if ivp > 67 then GlobalColor("67%+") else if ivp > 33 then GlobalColor("34-66%") else  GlobalColor("33%-"));

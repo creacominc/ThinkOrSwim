@@ -1,0 +1,102 @@
+#Follow Ken Rose on twitter @KRose_TDA on twitter for updates to this and other scripts
+
+#suggest using 5 year weekly charts
+#plots historical dividend Yields (DividendTTM/Close)
+
+declare lower;
+
+#############Finding How Often Dividends Paid############
+#####Some REITS Pay Monthly###############################
+#def IsDaily = GetAggregationPeriod() == AggregationPeriod.DAY ;
+#def IsWeekly = GetAggregationPeriod() == AggregationPeriod.week;
+#def Ismonthly = GetAggregationPeriod() == AggregationPeriod.month ;
+
+#def AD = if IsNaN(getDividend()) then 0 else 1 ;
+#def AE = if IsNaN(GetActualEarnings()) then 0 else GetActualEarnings();
+
+#def DIV_TimesPaid = if isdaily then Sum(AD, 252)else if isweekly then sum(AD,52)else if ismonthly then sum(AD,12)else double.NaN;
+#########################################################
+Input HiYield_Percentage = .85;
+Input LowYield_Percentag = .15;
+input Label_Color_Choice = {"magenta", "green", "pink", "orange", default "red", "cyan", "blue", "gray", "violet"};
+
+#def StockSplitBar = if !isnan(getsplitnumerator()) then BarNumber() else 0;
+#def SplitBar = HighestAll(StockSplitBar);
+#def StockSplit =  getsplitNumerator()/getsplitDenominator();
+#def SplitValue = HighestAll(StockSplit);
+
+#def RunningDividend = if !isnan(getdividend())then getdividend() else RunningDividend[1];
+
+#################################################################
+#def SplitHasOccured = if !isnan(getsplitNumerator())then 1 else SplitHasOccured[1];
+#def DivFollowSplitHasOccurred = compoundvalue(1,if  DivFollowSplitHasOccurred[1]>0 then  DivFollowSplitHasOccurred[1] else if SplitHasOccured>0 and !isnan(getdividend())then 1 else  DivFollowSplitHasOccurred[1],0);
+#################################################################
+
+#def RunningYield = if runningdividend>0 then (if splitbar>0 and barnumber()<splitbar  then (runningDividend*DIV_TimesPaid/(close * splitvalue))*100  else 
+  #  if splithasOccured==1 and DivFollowSplitHasOccurred==0 then      
+   # (runningDividend*DIV_TimesPaid/(close*SplitValue))* 100
+
+#else 
+   # if splitbar > 0 and barnumber() >= splitbar then      
+   # (runningDividend*DIV_TimesPaid/(close))* 100 else if splitbar==0 then (runningDividend*DIV_TimesPaid/(close) *100) else  RunningYield[1])else double.NaN;
+
+#def YieldForecast = if splitbar > 0 and barnumber() < splitbar and getdividend() > 0 then getdividend() * DIV_TimesPaid / (close * SplitValue ) else
+   # if splitbar > 0 and barnumber() >= splitbar and getdividend() > 0 then      
+   # getdividend()*DIV_TimesPaid/(close) else
+   # getdividend()*DIV_TimesPaid / close;
+#def YieldForecastPlot = YieldForecast * 100;
+#plot HistoricalYields = YieldForecastPlot;
+
+#def HiYield = Highestall(YieldForecastPlot);
+#def lowYield = lowestAll(YieldForecastPlot);
+def highbar = if close >0 then highbar[1] +1 else highbar[1];
+#def DiffY = (HiYield - LowYield);
+# plot LowYprcnt = Lowyield + (LowYield_Percentag * DiffY);
+#LowYprcnt.SetLineWeight(3);
+#LowYprcnt.AssignValueColor(color.red);
+#plot HiYPoint = Lowyield + (HiYield_Percentage * DiffY);
+#HiYPoint.SetLineWeight(3);
+#HiYPoint.AssignValueColor(color.red);
+#########################################################Under Construction####
+#def Bars = if close > 0 then barnumber()else 0;
+#def BarsTotal = highestAll(bars);
+#def FinalChartYield = if barnumber()== (BarsTotal) then YieldForecastPlot else 0;
+#def FinalYield = highestAll(finalChartYield);
+#def TimeBelowYield = if yieldForecastPlot<finalYield then FinalYield[1]+1 else FinalYield[1];
+#def TimeBelowPercentage = TimeBelowYield/BarsTotal;
+#AddLabel(yes, "Time Below: " + YieldForecastPlot + "%", GetColor(label_color_choice)); 
+############################################################################
+
+#HistoricalYields.SetPaintingStrategy(PaintingStrategy.squares);
+#HistoricalYields.AssignValueColor(color.DARK_GRAY);
+#HistoricalYields.SetLineWeight(5);
+
+#plot pRunningYield = RunningYield;
+#pRunningYield.SetDefaultColor(color.GREEN);
+#pRunningYield.SetLineWeight(2);
+
+plot pDivTTM = (dividendsPerShareTTM()/close)*100;
+pDivTTM.SetDefaultColor(color.uptick);
+pDivTTM.SetLineWeight(3);
+
+def HiYield = Highestall(pDivTTM);
+def lowYield = lowestAll(pDivTTM);
+def DiffY = (HiYield - LowYield);
+plot LowYprcnt = Lowyield + (LowYield_Percentag * DiffY);
+LowYprcnt.SetLineWeight(3);
+LowYprcnt.SetDefaultColor(color.downTICK);
+plot HiYPoint = Lowyield + (HiYield_Percentage * DiffY);
+HiYPoint.SetLineWeight(3);
+HiYPoint.AssignValueColor(color.downTICK);
+
+def Bars = if close > 0 then barnumber()else 0;
+def BarsTotal = highestAll(bars);
+def FinalChartYield = if barnumber()== (BarsTotal) then pDivTTM else 0;
+def FinalYield = highestAll(finalChartYield);
+def TimeBelowYield = if pDivTTM<finalYield then FinalYield[1]+1 else FinalYield[1];
+def TimeBelowPercentage = TimeBelowYield/BarsTotal;
+
+#plot HistoricalYields = pDivTTM;
+#HistoricalYields.SetPaintingStrategy(PaintingStrategy.squares);
+#HistoricalYields.AssignValueColor(color.DARK_GRAY);
+#HistoricalYields.SetLineWeight(5);

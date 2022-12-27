@@ -1,0 +1,22 @@
+#Follow Ken Rose on twitter @KRose_TDA for updates to this script and other scripts
+
+input price = close;
+input Moving_Average_Type = {default "Simple" , "Exponential"};
+input Moving_Average_Length = 30;
+input ATR_STP_Percent = 50;
+def SMA = Average(price, Moving_Average_length);
+#def TV = isnan (close)and !isnan(close[1]);
+
+
+
+input ATR_length = 14;
+input ATR_average_Type = AverageType.WILDERS;
+
+def ATR = MovingAverage(ATR_average_Type, TrueRange(high, close, low), ATR_length);
+
+plot Stop = sma-(ATR*(atr_STP_Percent/100));
+
+#Def BullTrgt =  sma+(ATR*(atr_STP_Percent/100));
+
+#plot Bulltrigger = Close crosses above BullTrgt;
+

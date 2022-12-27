@@ -1,0 +1,71 @@
+# GetDayValues
+# Author: Kory Gill, @korygill
+#
+# VERSION HISTORY (sortable date and time (your local time is fine), and your initials
+# 20190823-1400-KG    - Created.
+# ...
+# ...
+#declare hide_on_daily;
+declare once_per_bar;
+
+input onUpper = yes;
+
+#
+# logic
+#
+def nan = Double.NaN;
+def isRollover = GetYYYYMMDD() != GetYYYYMMDD()[1];
+def beforeStart = GetTime() < RegularTradingStart(GetYYYYMMDD());
+def afterEnd = GetTime() > RegularTradingEnd(GetYYYYMMDD());
+def firstBarOfDay = if (beforeStart[1] == 1 and beforeStart == 0) or (isRollover and beforeStart == 0) then 1 else 0;
+def lastBarOfDay = if 
+    (afterEnd[-1] == 1 and afterEnd == 0) or
+    (isRollover[-1] and firstBarOfDay[-1])
+    then 1 
+    else 0;
+
+#
+# Identify first bar of day and last bar of day on chart
+#
+AddChartBubble(
+    firstBarOfDay and onUpper,
+    close,
+    "First Bar of Day",
+    Color.GREEN,
+    yes);
+
+AddChartBubble(
+    lastBarOfDay and onUpper,
+    close,
+    "Last Bar of Day",
+    Color.GREEN,
+    no);
+
+def div = if isNAN( GetDividend() ) then 0 else GetDividend();
+AddChartBubble(
+    onUpper and  isNAN( GetDividend() ) and div,
+    close,
+    "Div: " + div,
+    GetColor(0),
+    no);
+
+#
+# plots
+#
+plot p1 = if !onUpper then isRollover else nan;
+plot p2 = if !onUpper then beforeStart else nan;
+plot p3 = if !onUpper then afterEnd else nan;
+plot p4 = if !onUpper then firstBarOfDay else nan;
+plot p5 = if !onUpper then lastBarOfDay else nan;
+
+p1.SetDefaultColor(GetColor(1));
+p2.SetDefaultColor(GetColor(2));
+p3.SetDefaultColor(GetColor(3));
+p4.SetDefaultColor(GetColor(4));
+p5.SetDefaultColor(GetColor(5));
+
+AddLabel(!onUpper, "isRollOver", GetColor(1));
+AddLabel(!onUpper, "beforeStart", GetColor(2));
+AddLabel(!onUpper, "afterEnd", GetColor(3));
+AddLabel(!onUpper, "firstBarOfDay", GetColor(4));
+AddLabel(!onUpper, "lastBarOfDay", GetColor(5));

@@ -1,0 +1,68 @@
+# Based on:  STO with breakout signals  ken.rose@tdameritrade.com.com
+
+#hint investment: amount to be invested with each buy signal
+input investment = 500;
+
+#hint minHoldLength: minimum number of bars after buy before the next sell
+input minHoldLength = 20;
+
+input KPeriod = 14;
+input DPeriod = 5;
+input priceH = high;
+input priceL = low;
+input priceC = close;
+input slowing_period = 1;
+input smoothingType = {default SMA, EMA};
+
+def lowest_k = Lowest(priceL, KPeriod);
+def c1 = priceC - lowest_k;
+def c2 = Highest(priceH, KPeriod) - lowest_k;
+def FastK = if c2 != 0 then c1 / c2 * 100 else 0;
+
+def fullk;
+def FullD;
+
+switch (smoothingType) {
+case SMA:
+    fullk = Average(FastK, slowing_period);
+    FullD = Average(fullk, DPeriod);
+case EMA:
+    fullk = ExpAverage(FastK, slowing_period);
+    FullD = ExpAverage(fullk, DPeriod);
+}
+
+# Buy signals
+
+def crossedu = Crosses(FullD, 25, CrossingDirection.ABOVE);
+plot crossabove = if crossedu then (priceL * 0.95) else Double.NaN;
+crossabove.AssignValueColor(GetColor(1));
+crossabove.SetPaintingStrategy(PaintingStrategy.ARROW_UP);
+crossabove.SetLineWeight(5);
+
+def phantomUp =  FullD < 75  and FullD  > 25 and FullD[1] < FullD[2] and FullD[2] > 25 and FullD  > FullD[1];
+def Phantom = if phantomUp then (priceL * 0.90) else Double.NaN;
+plot pPhantom =  Phantom;
+pPhantom.AssignValueColor(GetColor(1));
+pPhantom.SetPaintingStrategy(PaintingStrategy.ARROW_UP);
+
+def lastBuyBar = if ( crossedu or phantomUp ) then BarNumber() else lastBuyBar[1];
+def okToSell =  (BarNumber() > (lastBuyBar + minHoldLength));
+
+# Sell signals
+
+def  crossedb   = okToSell and Crosses(FullD, 75, CrossingDirection.BELOW);
+plot crossbelow = if crossedb then (priceH * 1.05) else Double.NaN;
+crossbelow.AssignValueColor( GetColor(5) );
+crossbelow.SetPaintingStrategy( PaintingStrategy.ARROW_DOWN );
+crossbelow.SetLineWeight( 5 );
+
+def phantomDn = okToSell and FullD < 75  and FullD  > 25 and FullD[1] > FullD[2] and FullD[2] > 25 and FullD  < FullD[1];
+def PhantomRed = if phantomDn then (priceH * 1.10) else Double.NaN;
+plot pPhantomRed = PhantomRed;
+pPhantomRed.AssignValueColor(GetColor(5));
+pPhantomRed.SetPaintingStrategy(PaintingStrategy.ARROW_Down);
+
+addOrder(OrderType.BUY_TO_OPEN, crossedu, tickColor = GetColor(6), arrowColor = GetColor(6));
+addOrder(OrderType.BUY_TO_OPEN, phantomUp, tickColor = GetColor(6), arrowColor = GetColor(6));
+addOrder(OrderType.SELL_TO_CLOSE, crossedb, tickColor = GetColor(2), arrowColor = GetColor(2));
+addOrder(OrderType.SELL_TO_CLOSE, phantomDn, tickColor = GetColor(2), arrowColor = GetColor(2));

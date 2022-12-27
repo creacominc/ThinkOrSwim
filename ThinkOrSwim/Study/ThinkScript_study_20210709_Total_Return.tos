@@ -1,0 +1,13 @@
+#This study shows the total Return: Div + Price Appreciation
+#On the chart for the chart period showing
+
+#declare lower;
+def close1 = First(close);
+
+rec TotalDiv = TotalDiv[1] + if IsNaN(GetDividend()) then 0 else  GetDividend();
+def PriceReturn = Round((close - close1) / (close1) * 100, 2);
+def DividendReturn = if TotalDiv > 0 then Round(TotalDiv / close1 * 100, 2) else 0 ;
+
+#addlabel(yes,"close1 " + close1 + " Close " + close );
+
+addlabel (yes,"Price Return= "+ PriceReturn +"% " + " Dividend Return= " + DividendReturn +"% " + "Total % Return= " + round(Pricereturn + DividendReturn,2));

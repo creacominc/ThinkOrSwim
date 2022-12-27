@@ -1,0 +1,37 @@
+## ###########################
+## ATR Trailing Stop Limit Buy
+## ###########################
+def HiLo = Min(high - low, 1.5 * Average(high - low, 20));
+def HRef = if low <= high[1]    then high - close[1]    else (high - close[1]) - 0.5 * (low - high[1]);
+def LRef = if high >= low[1]    then close[1] - low     else (close[1] - low) - 0.5 * (low[1] - high);
+def trueRange = Max(HiLo, Max(HRef, LRef));
+def loss = 4.5 * MovingAverage( AverageType.WILDERS, trueRange, 20);
+def state = {default init, long, short};
+def trail;
+switch (state[1]) {
+case init:
+    if (!IsNaN(loss)) {
+        state = state.long;
+        trail =  close - loss;
+    } else {
+        state = state.init;
+        trail = Double.NaN;
+    }
+case long:
+    if (close > trail[1]) {
+        state = state.long;
+        trail = Max(trail[1], close - loss);
+    } else {
+        state = state.short;
+        trail = close + loss;
+    }
+case short:
+    if (close < trail[1]) {
+        state = state.short;
+        trail = Min(trail[1], close + loss);
+    } else {
+        state = state.long;
+        trail =  close - loss;
+    }
+}
+plot TrailingStopBuy = (close > trail) and (close[1] < trail );
