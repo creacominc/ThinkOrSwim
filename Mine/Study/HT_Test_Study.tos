@@ -1,0 +1,62 @@
+## ###################
+## This study will be true 15 minutes after the opening bell.
+## ###################
+declare once_per_bar;
+
+## ####################
+## Disable if too early
+## ####################
+#hint earliest:  earliest time for entering an order.  Default = 0945
+input earliest = 0945;
+def period = GetAggregationPeriod();
+def currentTime = GetTime();
+def notTooEarly = ((currentTime>=earliest) or (period>=AggregationPeriod.DAY));
+
+## ####################
+## Optional Enter-After
+## ###################3
+#hint enterAfterDate:  enter an order after this date - 0 disables.
+input enterAfterDate = 0;
+def currentDay = GetYYYYMMDD();
+def isIntraday = (period < AggregationPeriod.DAY);
+def useBuyAfterDate = ((enterAfterDate>0) and (notTooEarly or !isIntraday));
+def buyAfterDateIsTrue = useBuyAfterDate 
+                            and (
+                                    (currentDay>=enterAfterDate) 
+                                    and (
+                                            (!isIntraday and (currentDay[1]<enterAfterDate))
+                                            or (isIntraday 
+                                                and (currentTime>RegularTradingStart(enterAfterDate))
+                                                and (SecondsFromTime(earliest)>0)
+                                                and (SecondsFromTime(earliest)<=(period/1000))
+                                               )
+                                        )
+                                );
+
+# Show a vertical line if we have set the enterAfterDate and not intraday
+AddVerticalLine( buyAfterDateIsTrue, enterAfterDate );
+
+## ####################
+## Optional Enter-Above
+## ####################
+#hint enterAbovePrice:  enter an order when above this price - 0 disables.
+input enterAbovePrice = 0;
+def buyOverIsTrue = if (enterAbovePrice > 0) 
+                    then (
+                            (close >= enterAbovePrice) 
+                        ) 
+                    else 0;
+
+# Show a vertical line if it is intra-day and a buy condition is set and the time is 09:45
+#AddVerticalLine( (period<AggregationPeriod.DAY) and 
+#  buyAfterIsTrue and (enterAfterDate > 0), currentDay);
+
+plot isBuy =  (buyAfterDateIsTrue or buyOverIsTrue);
+#isBuy.SetHiding( 1 );
+
+## ###################################
+AddLabel( 1, 
+    "buyOver: " + enterAbovePrice + "  buyOver: " + buyOverIsTrue,
+    Color.GRAY
+);
+
