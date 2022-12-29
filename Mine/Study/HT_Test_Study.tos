@@ -6,41 +6,42 @@ declare once_per_bar;
 ## ####################
 ## Disable if too early
 ## ####################
-#hint earliest:  earliest time for entering an order.  Default = 0945
-input earliest = 0945;
+#hint minTimeAfterBell:  minimum minutes after the opening beel before entering an order.  Default = 15
+input minTimeAfterBell = 15;
 def period = GetAggregationPeriod();
+def currentDay  = GetYYYYMMDD();
 def currentTime = GetTime();
-def notTooEarly = ((currentTime>=earliest) or (period>=AggregationPeriod.DAY));
+def minimumTime = RegularTradingStart( currentDay ) + (minTimeAfterBell * 60 * 1000);
+def notTooEarly = ((currentTime>=minimumTime) or (period>=AggregationPeriod.DAY));
 
 ## ####################
-## Optional Enter-After
-## ###################3
-#hint enterAfterDate:  enter an order after this date - 0 disables.
-input enterAfterDate = 0;
-def currentDay = GetYYYYMMDD();
+## Optional Not Before
+## ####################
+#hint notBeforeDate:  do not enter before this date - 0 disables.
+input notBeforeDate = 0;
 def isIntraday = (period < AggregationPeriod.DAY);
-def useBuyAfterDate = ((enterAfterDate>0) and (notTooEarly or !isIntraday));
-plot buyAfterDateIsTrue = useBuyAfterDate 
-                            and (
-                                    (currentDay>=enterAfterDate) 
-                                    and (
-                                            (!isIntraday and (currentDay[1]<enterAfterDate))
-                                            or (isIntraday 
-                                                and (currentTime>RegularTradingStart(enterAfterDate))
-                                                and (SecondsFromTime(earliest)>0)
-                                                and (SecondsFromTime(earliest)<=(period/1000))
-                                               )
-                                        )
-                                );
+def firstDay   = if (BarNumber() == 0) then currentDay else firstDay[1];
+def dateToUse  = if (notBeforeDate==0) then firstDay else notBeforeDate;
+def minimumDateOk = ( (currentDay>=dateToUse) and notTooEarly );
 
-# Show a vertical line if we have set the enterAfterDate and not intraday
-AddVerticalLine( buyAfterDateIsTrue, enterAfterDate );
-
-#buyAfterDateIsTrue.SetHiding( 1 );
+## ####################
+## Optional Buy Above
+## ####################
+#hint buyAbovePrice:  enter if the price is above this value - 0 disables.
+input buyAbovePrice = 0.0;
+def buyAboveOk = (buyAbovePrice>0.0) and (close>buyAbovePrice);
 
 ## ###################################
 AddLabel( 1, 
-    "buyAfterDateIsTrue: " + buyAfterDateIsTrue + "     ",
-    Color.GRAY
+    "minimumDateOk: " + (dateToUse)
+    + 
+    ", buyAbove: " + buyAbovePrice
+    , Color.GRAY
 );
+
+plot isBuy = minimumDateOk and buyAboveOk;
+#isBuy.SetHiding( 1 );
+
+# Show a vertical line if we have set the notBeforeDate and not intraday
+AddVerticalLine( isBuy, buyAbovePrice );
 
