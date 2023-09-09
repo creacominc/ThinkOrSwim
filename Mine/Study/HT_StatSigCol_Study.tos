@@ -8,23 +8,6 @@ input enableOnBalanceVolume = 1;
 input enableMACDCross = 1;
 
 
-
-
-
-
-#hint minHoldingPeriod: the minimum number of bars after a buy before a sell is allowed
-#input minHoldingPeriod = 20;
-
-## ###################
-## enablement switches
-## ###################
-#hint enableOnBalanceVolume:  enable OnBalanceVolumeModified strategy
-#input enableOnBalanceVolume = 1;
-#hint enableMACDCross: enable MACDCross strategy 
-#input enableMACDCross = 1;
-
-
-
 ## #######################
 ## ATR Trailing Stop Limit
 ## #######################

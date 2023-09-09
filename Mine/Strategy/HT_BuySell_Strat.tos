@@ -23,7 +23,7 @@ def buyOverIsTrue = 0; # if (enterAbovePrice > 0) then (close >= enterAbovePrice
 input minHoldingPeriod = 20;
 
 #hint buyAmount: the dollar value target for purchases.  n=buyAmount/price
-input buyAmount = 2000;
+input buyAmount = 2400;
 
 ## ###################
 ## enablement switches
@@ -44,26 +44,31 @@ def notTooEarly = 1; #  if (GetAggregationPeriod() < AggregationPeriod.DAY) then
 ## ####################
 ## Chart markers
 ## ####################
+# #hint ATRMultiple: A muliple to increase the ATR gap
+#input ATRMultiple = 1.25;
 #hint ATRPeriod: ATR The number of bars used to calculate the Average True Range. Was 29.
 input ATRPeriod = 20;
 #hint ATRBuyFactor: ATR The multiplier of the ATR value.  Default 4.5.
 input ATRBuyFactor = 4.5;
-#hint ATRSellFactor: ATR The multiplier of the ATR value.  Default 4.5
-input ATRSellFactor = 4.5;
+#hint ATRSellFactor: ATR The multiplier of the ATR value.  Default 6.0
+input ATRSellFactor = 6.0;
 #hint ATRaverageType: ATR The type of moving average to be used in calculations: simple, exponential, weighted, Wilder's, or Hull.
 input ATRaverageType = AverageType.WILDERS;
 #def barNums = if close then (barnumber()) else double.nan;
 #def lastBarNum = highestall( barNums );
 #def firstBarNum = lastBarNum - minHoldingPeriod;
+#def midBarNumb  = lastBarNum - (minHoldingPeriod / 2);
 #def isAfterFirst = barnumber() > firstBarNum;
 #def isLastBar = (barnumber() == lastBarNum);
 #def isOnOrAfterLast = (barnumber() >= lastBarNum);
+#def isFirstBar = barnumber() == firstBarNum + 1;
+#def isMidPeriod = barnumber() == midBarNumb + 1;
 
 #def lowsSinceStart = if barnumber() > firstBarNum then (low) else double.nan;
 #def lastDayLow  = if isLastBar then (low) else double.nan;
 #def lastDayHigh = if isLastBar then (high) else double.nan;
 #def lastDayClose = if isLastBar then (close) else double.nan;
-#def lastATR     = if isLastBar then ATR(ATRPeriod, ATRaverageType) else lastATR[1];
+#def lastATR     = if isLastBar then (ATR(ATRPeriod, ATRaverageType) * ATRMultiple) else lastATR[1];
 
 def atrFactor = (ATRBuyFactor + ATRSellFactor) / 2.0;
 #def currentATRPct = lastATR / close;
@@ -218,6 +223,7 @@ def okToBuy  = buyAfterIsTrue and isStrategyBuy and ( ! isStrategySell );
 # def okToBuy  =  isStrategyBuy and ( ! isStrategySell );
 
 
+#AddVerticalLine( isFirstBar or isMidPeriod, GetYYYYMMDD(), Color.ORANGE, curve.SHORT_DASH);
 
 ## ###################################
 ## show labels for ATR and Stop Limits
@@ -269,22 +275,27 @@ AddOrder( OrderType.SELL_TO_CLOSE,
                     else "SELL"
 );
 
-# AddLabel( 1, # visibility, 
+## ###################################
+# AddLabel( 1,
 #     "ATR=" + Round( lastATR, 1 )
 #     + ", ATR%=" + Round( currentATRPct * 100, 1 )
 #     + ", TS%=" + stopLimitPct
-#     + ", Yld=" + Round( GetYield() * 100, 1 )
+#     + ", 0.6*ATR%=" + Round( currentATRPct * 100 * 0.6 , 2 )
+#     + ", 1.5*ATR%=" + Round( currentATRPct * 100 * 1.5 , 2 )
+#     #+ ", Yld=" + Round( GetYield() * 100, 1 )
+#     + "  "
 #     #+ ", TRG=" + stopLimitPrc
 #     #+ ", LMT=" + Round(stopLimitPrc * 0.995, 2)
 #     ,
-#     if isBuy then Color.UPTICK
-#     else if isSell then Color.DOWNTICK
+#     if close < trail then Color.UPTICK 
 #     else Color.GRAY
 # );
 
 ## ###################################
 # AddLabel( 1, 
-#     "Buy BID>" + Round( if (close<trail) then trail else (close*1.05), 2)
+#    " Buy " + Max( 1.0, Floor( buyAmount / 4 / open ) )
+#    + " BID> " + Round( if (close<trail) then trail else (close*1.05), 2)
+#    + "   "
 #     #+ ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
 #     #+ ", Amt: " + max( ceil(trail * 2 * (1+currentATRPct)), 700 ) 
 #     ,
@@ -296,8 +307,14 @@ AddOrder( OrderType.SELL_TO_CLOSE,
 # AddLabel( 1, 
 #     "Sell ASK<" + Round(trail / (1 - currentATRPct) / (1 - 0.0125), 2)
 #     + ", ATR=" + Round( currentATRPct * 100, 1 )
-#     + "%, CNCL MARK<" + Round(trail, 2)
+#    + "%, CNCL MARK<" + Round(trail, 2) + "  "
 #     ,
 #     if close > trail then Color.DOWNTICK 
 #     else Color.GRAY
 # );GetTime() < RegularTradingStart(GetYYYYMMDD());
+
+## ###################################
+# AddLabel( 1, 
+#     "Div: " + Round(GetYield() * 100, 2) + "  "
+#     , Color.UPTICK
+# );
