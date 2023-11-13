@@ -316,5 +316,6 @@ AddLabel( 1,
 ## ###################################
 AddLabel( 1, 
     "Div: " + Round(GetYield() * 100, 2) + "  "
+    + "P/L=" + FloatingPL()
     , Color.UPTICK
 );
