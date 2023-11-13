@@ -261,6 +261,8 @@ AddOrder( OrderType.BUY_TO_OPEN,
                     else "BUY"
 );
 
+# def fpl = if  barNumber() == 0 then 0 else fpl[1] + if isBuy then close else if isSell then -close else 0;
+
 ## ############################################################
 ## Sell Orders
 ## ############################################################
@@ -318,3 +320,7 @@ AddOrder( OrderType.SELL_TO_CLOSE,
 #     "Div: " + Round(GetYield() * 100, 2) + "  "
 #     , Color.UPTICK
 # );
+
+# def bn = if  barNumber() == 0 then barNumber() else bn[1] + barNumber();
+# plot FPLVal = fpl;
+
