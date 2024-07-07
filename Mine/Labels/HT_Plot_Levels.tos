@@ -319,3 +319,7 @@ AddLabel( 1,
     + "P/L=" + FloatingPL()
     , Color.UPTICK
 );
+
+# def bn = if  barNumber() == 0 then barNumber() else bn[1] + barNumber();
+#plot FPLVal = fpl;
+
