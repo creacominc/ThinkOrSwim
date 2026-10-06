@@ -1,0 +1,12 @@
+declare upper;
+
+input labelText = "20 / 50 MA Cross";
+
+AddLabel(
+    yes,
+    labelText,
+    Color.WHITE,
+    Location.TOP_RIGHT,
+    FontSize.LARGE,
+    yes
+);

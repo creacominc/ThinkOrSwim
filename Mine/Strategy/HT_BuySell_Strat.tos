@@ -304,3 +304,14 @@ AddOrder( OrderType.SELL_TO_CLOSE,
 #     if close > trail then Color.DOWNTICK 
 #     else Color.GRAY
 # );GetTime() < RegularTradingStart(GetYYYYMMDD());
+
+## ###################################
+# AddLabel( 1, 
+#     "Div: " + Round(GetYield() * 100, 2) + "  "
+#     + "P/L=" + FloatingPL()
+#     #+ " bars: " + barNumber() + "  "
+#     , if FloatingPL() > 8000 then Color.UPTICK
+#        else if FloatingPL() > 6000 then Color.CYAN
+#        else if FloatingPL() > 0 then Color.YELLOW
+#         else Color.RED
+# );

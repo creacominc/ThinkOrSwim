@@ -1,0 +1,207 @@
+## ###################
+## Notes
+## ###################
+#declare hide_on_intraday;
+# - With some functions the chart adds 72 bars to the specified durations.  As a result, the numbers based on a time range will not match (eg On Balance Volume).
+# - Each section below will be enabled by an enablement switch and provides an indicator and possibly a buy/sell signal.
+
+#hint minHoldingPeriod: the minimum number of bars after a buy before a sell is allowed
+input minHoldingPeriod = 20;
+
+#hint buyAmount: the dollar value target for purchases.  n=buyAmount/price
+input buyAmount = 2400;
+
+## ###################
+## enablement switches
+## ###################
+#hint enableOnBalanceVolume:  enable OnBalanceVolumeModified strategy
+input enableOnBalanceVolume = 1;
+#hint enableMACDCross: enable MACDCross strategy 
+input enableMACDCross = 1;
+
+## ####################
+## Chart markers
+## ####################
+#hint ATRMultiple: A muliple to increase the ATR gap
+#input ATRMultiple = 1.25;
+#hint ATRPeriod: ATR The number of bars used to calculate the Average True Range. Was 29.
+input ATRPeriod = 20;
+#hint ATRBuyFactor: ATR The multiplier of the ATR value.  Default 4.5.
+input ATRBuyFactor = 4.5;
+#hint ATRSellFactor: ATR The multiplier of the ATR value.  Default 6.0
+input ATRSellFactor = 6.0;
+#hint ATRaverageType: ATR The type of moving average to be used in calculations: simple, exponential, weighted, Wilder's, or Hull.
+input ATRaverageType = AverageType.WILDERS;
+
+def barNumber =  if close then barNumber() else 0;
+
+def atrFactor = (ATRBuyFactor + ATRSellFactor) / 2.0;
+
+
+## #######################
+## ATR Trailing Stop Limit
+## #######################
+Assert(ATRFactor > 0, "'atr factor' must be positive: " + ATRFactor);
+def HiLo = Min(high - low, 1.5 * Average(high - low, ATRPeriod));
+def HRef = if low <= high[1]    then high - close[1]    
+            else (high - close[1]) - 0.5 * (low - high[1]);
+def LRef = if high >= low[1]    then close[1] - low     
+            else (close[1] - low) - 0.5 * (low[1] - high);
+def trueRange = Max(HiLo, Max(HRef, LRef));
+def loss = ATRFactor * MovingAverage( ATRaverageType, trueRange, ATRPeriod);
+def state = {default init, long, short};
+def trail;
+switch (state[1]) {
+case init:
+    if (!IsNaN(loss)) {
+        state = state.long;
+        trail =  close - loss;
+    } else {
+        state = state.init;
+        trail = Double.NaN;
+    }
+case long:
+    if (close > trail[1]) {
+        state = state.long;
+        trail = Max(trail[1], close - loss);
+    } else {
+        state = state.short;
+        trail = close + loss;
+    }
+case short:
+    if (close < trail[1]) {
+        state = state.short;
+        trail = Min(trail[1], close + loss);
+    } else {
+        state = state.long;
+        trail =  close - loss;
+    }
+}
+def TSBuySignal = if barNumber <= 1 then 0
+                else Crosses(state == state.long, 0, CrossingDirection.ABOVE);
+def TSSellSignal = if barNumber <= 1 then 0
+                else Crosses(state == state.short, 0, CrossingDirection.ABOVE);
+
+## ###################
+## Volume : OnBalanceVolumeModified
+## Buy when the OBVM is increasing and crosses above the signal while the volume is greater than the average
+## ###################
+#hint OBVMLength:  the number of bars for the OnBalanceVolume calculation. (Likely plus 71 bars.) Default is 7.
+input OBVMLength = 7;
+#hint OBVMSignalLength:  the number of bars for the OBVM Signal line.  OBVMLength must be less thsn the Signal Length.  Default is 10.
+input OBVMSignalLength = 10;
+Assert( OBVMLength < OBVMSignalLength, "OBVM Length (" + OBVMLength + ") must be less than the Signal Length (" + OBVMSignalLength + ")" );
+#hint OBVMAverageType: average type used for OBVM
+input OBVMAverageType = AverageType.EXPONENTIAL;
+#hint VolumeAvgLength: bars for volume average.  default is 50.
+input VolumeAvgLength = 50;
+#
+def Vol = if close[1] then Sign(close - close[1]) * volume
+            else 0;
+def VolAvg = Average( volume, VolumeAvgLength );
+#
+def OBV = reference OnBalanceVolume();
+def OBVM = MovingAverage( OBVMAverageType, OBV, OBVMLength );
+def OBVMSignal = MovingAverage( OBVMAverageType, OBVM, OBVMSignalLength );
+#
+def isVolGrowing = Vol > VolAvg;
+# OBVM is good if it is higher than the signal and moving up.
+def isOBVMGood = (OBVM > OBVMSignal) and (OBVM > OBVM[1]);
+# OBVM is bad if it is lower than the signal and moving down.
+def isOBVMBad = (OBVM < OBVMSignal) and (OBVM < OBVM[1]);
+# Buy on OBVM cross up - the prior OBVM was below the prior signal
+def isOBVMBuy = enableOnBalanceVolume and isOBVMGood and (OBVM[1] < OBVMSignal[1]) and isVolGrowing;
+# Sell on OBVM cross down - the prior OBVM was above the prior signal
+def isOBVMSell = enableOnBalanceVolume and isOBVMBad and (OBVM[1] > OBVMSignal[1]);
+#
+
+
+## ###################
+## MACD Cross: from MACDCustom
+## Buy when the MACD crosses above the Signal
+## ###################
+#hint MACDFastLength:  default=12
+input MACDFastLength = 12;
+#hint MACDSlowLength: default=26
+input MACDSlowLength = 26;
+#hint MACDLength: default=9
+input MACDLength = 9;
+#hint MACDAverageType: exponential
+input MACDAverageType = AverageType.EXPONENTIAL;
+def MACDValue = MovingAverage( MACDAverageType, close, MACDFastLength ) - MovingAverage( MACDAverageType, close, MACDSlowLength );
+def MACDAvg   = MovingAverage( MACDAverageType, MACDValue, MACDLength );
+# MACD is good if it is above the average
+def isMACDGood = (MACDValue > MACDAvg) and ( MACDValue > MACDValue[1] );
+# MACD is bad if it is below the average
+def isMACDBad  = (MACDValue < MACDAvg) and ( MACDValue < MACDValue[1] );
+# Buy when the macd crosses above and is higher than yesterday
+def isMACDBuy = enableMACDCross and isMACDGood and (MACDValue[1] < MACDAvg[1]);
+# Sell when macd crosses below and is lower than yesterday
+def isMACDSell = enableMACDCross and isMACDBad and (MACDValue[1] > MACDAvg[1]);
+
+
+## ############################################################
+## Track the bars since the last buy to avoid selling too soon.
+## ############################################################
+def isStrategyBuy  =  isOBVMBuy or isMACDBuy or TSBuySignal;
+def isStrategySell =  isOBVMSell or isMACDSell or TSSellSignal;
+
+def barsSinceBuy =  if isStrategyBuy then 0 
+                    else if barNumber == 0 then minHoldingPeriod + 1
+                    else barsSinceBuy[1] + 1;
+
+def okToSell = isStrategySell and (barsSinceBuy > minHoldingPeriod);
+def okToBuy  =  isStrategyBuy and ( ! isStrategySell );
+
+
+## ###################################
+## show labels for ATR and Stop Limits
+## ###################################
+#hint minimumHoldingBuyFactor: a factor that determines the minimum amount we must have before buying more
+input minimumHoldingBuyFactor = 55;
+#hint minHolding: the minimum market value.  The amount we would be willing to lose if the price went to 0. Default=1000
+input minHolding = 1000;
+#hint maximumHoldingFactor: a factor that determines the most we should have of the security at the current gain
+input maximumHoldingFactor = 65;
+
+def isSell =  okToSell;
+def isBuy =   okToBuy;
+
+def tradeSize = Max( 1.0, Floor( buyAmount / close ) );
+
+def shares = if barNumber == 0 then 0 
+            else if isBuy then shares[1] + tradeSize 
+            else if isSell then 0 
+            else shares[1];
+
+def cost = if barNumber == 0 then 0 
+            else if isBuy then cost[1] + (tradeSize * close) 
+            else if isSell then 0 
+            else cost[1];
+
+def fpl = if barNumber == 0 then 0 
+            else if isBuy then fpl[1] 
+            else if isSell then fpl[1] + ((shares[1]*close) - cost[1]) 
+            else fpl[1];
+
+
+AddChartBubble( barNumber, 
+                close * 1.1,
+                "fpl = " + fpl 
+                + "\n  barNumber = " + barNumber
+                + "\n  isOBVMBuy = " + isOBVMBuy
+                + "\n  isMACDBuy = " + isMACDBuy
+                + "\n  TSBuySignal = " + TSBuySignal
+                + "\n  isStrategySell = " + isStrategySell
+                + "\n  shares = " + shares
+                + "\n  cost = " + cost
+                + "\n  tradeSize = " + tradeSize
+                + "\n  okToBuy = " + okToBuy
+                + "\n  okToSell = " + okToSell
+                + "\n  fpl = " + fpl
+                , Color.green,
+                yes );
+
+
+plot FPLVal = fpl;
+

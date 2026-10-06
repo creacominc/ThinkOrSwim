@@ -8,22 +8,22 @@ declare hide_on_intraday;
 ## ###################
 ## Optional Enter-After
 ## ###################
-#hint enterAfterDate:  enter an order after this date - 0 disables.
-input enterAfterDate = 0;
-def buyAfterIsTrue = (GetYYYYMMDD() >= enterAfterDate);
+# #hint enterAfterDate:  enter an order after this date - 0 disables.
+# def enterAfterDate = 0;
+def buyAfterIsTrue = 1; # (GetYYYYMMDD() >= enterAfterDate);
 
 ## ###################
 ## Optional Enter-Above
 ## ###################
-#hint enterAbovePrice:  enter an order when above this price - 0 disables.
-input enterAbovePrice = 0;
-def buyOverIsTrue = if (enterAbovePrice > 0) then (close >= enterAbovePrice) else 0;
+# #hint enterAbovePrice:  enter an order when above this price - 0 disables.
+# # input enterAbovePrice = 0;
+def buyOverIsTrue = 0; # if (enterAbovePrice > 0) then (close >= enterAbovePrice) else 0;
 
 #hint minHoldingPeriod: the minimum number of bars after a buy before a sell is allowed
 input minHoldingPeriod = 20;
 
-##hint buyAmount: the dollar value target for purchases.  n=buyAmount/price
-#input buyAmount = 2400;
+#hint buyAmount: the dollar value target for purchases.  n=buyAmount/price
+input buyAmount = 2400;
 
 ## ###################
 ## enablement switches
@@ -36,14 +36,16 @@ input enableMACDCross = 1;
 ## ###################
 ## Disable if too early
 ## ###################
-#hint minimumSecondsSinceBell: seconds after the opening bell to start investing
-input minimumSecondsSinceBell = 900;
-def notTooEarly = if (GetAggregationPeriod() < AggregationPeriod.DAY) then (GetTime() > (RegularTradingStart(GetYYYYMMDD()) + minimumSecondsSinceBell)) else 1;
+# #hint minimumSecondsSinceBell
+# input minimumSecondsSinceBell = 900;
+def notTooEarly = 1; #  if (GetAggregationPeriod() < AggregationPeriod.DAY) then (GetTime() > (RegularTradingStart(GetYYYYMMDD()) + minimumSecondsSinceBell)) else 1;
 
 
 ## ####################
 ## Chart markers
 ## ####################
+#hint ATRMultiple: A muliple to increase the ATR gap
+input ATRMultiple = 1.25;
 #hint ATRPeriod: ATR The number of bars used to calculate the Average True Range. Was 29.
 input ATRPeriod = 20;
 #hint ATRBuyFactor: ATR The multiplier of the ATR value.  Default 4.5.
@@ -52,54 +54,57 @@ input ATRBuyFactor = 4.5;
 input ATRSellFactor = 6.0;
 #hint ATRaverageType: ATR The type of moving average to be used in calculations: simple, exponential, weighted, Wilder's, or Hull.
 input ATRaverageType = AverageType.WILDERS;
-#def barNums = if close then (barnumber()) else double.nan;
-#def lastBarNum = highestall( barNums );
-#def firstBarNum = lastBarNum - minHoldingPeriod;
-#def isAfterFirst = barnumber() > firstBarNum;
-#def isLastBar = (barnumber() == lastBarNum);
-#def isOnOrAfterLast = (barnumber() >= lastBarNum);
+def barNums = if close then (barnumber()) else double.nan;
+def lastBarNum = highestall( barNums );
+def firstBarNum = lastBarNum - minHoldingPeriod;
+def midBarNumb  = lastBarNum - (minHoldingPeriod / 2);
+def isAfterFirst = barnumber() > firstBarNum;
+def isLastBar = (barnumber() == lastBarNum);
+def isOnOrAfterLast = (barnumber() >= lastBarNum);
+def isFirstBar = barnumber() == firstBarNum + 1;
+def isMidPeriod = barnumber() == midBarNumb + 1;
 
-#def lowsSinceStart = if barnumber() > firstBarNum then (low) else double.nan;
-#def lastDayLow  = if isLastBar then (low) else double.nan;
-#def lastDayHigh = if isLastBar then (high) else double.nan;
-#def lastDayClose = if isLastBar then (close) else double.nan;
-#def lastATR     = if isLastBar then ATR(ATRPeriod, ATRaverageType) else lastATR[1];
+def lowsSinceStart = if barnumber() > firstBarNum then (low) else double.nan;
+def lastDayLow  = if isLastBar then (low) else double.nan;
+def lastDayHigh = if isLastBar then (high) else double.nan;
+def lastDayClose = if isLastBar then (close) else double.nan;
+def lastATR     = if isLastBar then (ATR(ATRPeriod, ATRaverageType) * ATRMultiple) else lastATR[1];
 
 def atrFactor = (ATRBuyFactor + ATRSellFactor) / 2.0;
-#def currentATRPct = lastATR / close;
-#def stopLimitPct =  Round( ( (atrFactor * lastATR)/close ) * 100.0, 2);
+def currentATRPct = lastATR / close;
+def stopLimitPct =  Round( ( (atrFactor * lastATR)/close ) * 100.0, 2);
 #def stopLimitPrc =  Round( close - (atrFactor * lastATR), 2);
 
-#plot lo20      = if isAfterFirst then lowestall( lowsSinceStart ) else double.nan;
+plot lo20      = if isAfterFirst then lowestall( lowsSinceStart ) else double.nan;
 #plot lo20      = lowest( low, 20 );
-#def lowestLastDayClose = lowestall( lastDayClose );
-#def highestLastDayHigh = highestall( lastDayHigh );
-#def lowestLastDayLow   = lowestall( lastDayLow );
-#plot lastClose = if isOnOrAfterLast then lowestLastDayClose else double.nan;
-#plot plusXATR  = if isOnOrAfterLast then highestLastDayHigh + (ATRSellFactor * lastATR ) else double.nan;
-#plot plusATR   = if isOnOrAfterLast then highestLastDayHigh + lastATR else double.nan;
-#plot lessXATR  = if isOnOrAfterLast then lowestLastDayLow - (ATRBuyFactor * lastATR ) else double.nan;
-#plot lessATR   = if isOnOrAfterLast then lowestLastDayLow - lastATR else double.nan;
-#plot plus5pct  = if isOnOrAfterLast then lowestLastDayClose * 1.05 else double.nan;
-#plot less5pct  = if isOnOrAfterLast then lowestLastDayClose * 0.95 else double.nan;
+def lowestLastDayClose = lowestall( lastDayClose );
+def highestLastDayHigh = highestall( lastDayHigh );
+def lowestLastDayLow   = lowestall( lastDayLow );
+plot lastClose = if isOnOrAfterLast then lowestLastDayClose else double.nan;
+plot plusXATR  = if isOnOrAfterLast then highestLastDayHigh + (ATRSellFactor * lastATR ) else double.nan;
+plot plusATR   = if isOnOrAfterLast then highestLastDayHigh + lastATR else double.nan;
+plot lessXATR  = if isOnOrAfterLast then lowestLastDayLow - (ATRBuyFactor * lastATR ) else double.nan;
+plot lessATR   = if isOnOrAfterLast then lowestLastDayLow - lastATR else double.nan;
+plot plus5pct  = if isOnOrAfterLast then lowestLastDayClose * 1.05 else double.nan;
+plot less5pct  = if isOnOrAfterLast then lowestLastDayClose * 0.95 else double.nan;
 
-#lo20.SetStyle( Curve.SHORT_DASH );
-#lo20.SetDefaultColor( Color.Yellow );
-#lastClose.SetStyle( Curve.SHORT_DASH );
-#lastClose.SetDefaultColor( Color.Gray );
-#plus5pct.SetStyle( Curve.SHORT_DASH );
-#plus5pct.SetDefaultColor( Color.Gray );
-#less5pct.SetStyle( Curve.SHORT_DASH );
-#less5pct.SetDefaultColor( Color.Gray );
+lo20.SetStyle( Curve.SHORT_DASH );
+lo20.SetDefaultColor( Color.Yellow );
+lastClose.SetStyle( Curve.SHORT_DASH );
+lastClose.SetDefaultColor( Color.Gray );
+plus5pct.SetStyle( Curve.SHORT_DASH );
+plus5pct.SetDefaultColor( Color.Gray );
+less5pct.SetStyle( Curve.SHORT_DASH );
+less5pct.SetDefaultColor( Color.Gray );
 
-#plusATR.SetStyle( Curve.SHORT_DASH );
-#plusATR.SetDefaultColor( Color.LIGHT_ORANGE );
-#lessATR.SetStyle( Curve.SHORT_DASH );
-#lessATR.SetDefaultColor( Color.LIGHT_ORANGE );
-#plusXATR.SetStyle( Curve.MEDIUM_DASH );
-#plusXATR.SetDefaultColor( Color.DARK_ORANGE );
-#lessXATR.SetStyle( Curve.MEDIUM_DASH );
-#lessXATR.SetDefaultColor( Color.DARK_ORANGE );
+plusATR.SetStyle( Curve.SHORT_DASH );
+plusATR.SetDefaultColor( Color.LIGHT_ORANGE );
+lessATR.SetStyle( Curve.SHORT_DASH );
+lessATR.SetDefaultColor( Color.LIGHT_ORANGE );
+plusXATR.SetStyle( Curve.MEDIUM_DASH );
+plusXATR.SetDefaultColor( Color.DARK_ORANGE );
+lessXATR.SetStyle( Curve.MEDIUM_DASH );
+lessXATR.SetDefaultColor( Color.DARK_ORANGE );
 
 
 ## #######################
@@ -141,12 +146,12 @@ case short:
 }
 def TSBuySignal = Crosses(state == state.long, 0, CrossingDirection.ABOVE);
 def TSSellSignal = Crosses(state == state.short, 0, CrossingDirection.ABOVE);
-#plot TrailingStop = trail;
+plot TrailingStop = trail;
 #TrailingStop.SetHiding( 1 );
-#TrailingStop.SetPaintingStrategy(PaintingStrategy.POINTS);
-#TrailingStop.DefineColor( "Buy", GetColor(6) );
-#TrailingStop.DefineColor( "Sell", GetColor(5) );
-#TrailingStop.AssignValueColor( if state == state.long    then #TrailingStop.Color( "Sell" )    else TrailingStop.Color( "Buy" ) );
+TrailingStop.SetPaintingStrategy(PaintingStrategy.POINTS);
+TrailingStop.DefineColor( "Buy", GetColor(6) );
+TrailingStop.DefineColor( "Sell", GetColor(5) );
+TrailingStop.AssignValueColor( if state == state.long    then TrailingStop.Color( "Sell" )    else TrailingStop.Color( "Buy" ) );
 
 
 ## ###################
@@ -215,10 +220,10 @@ def barsSinceBuy = if isStrategyBuy
                     then 0 else barsSinceBuy[1] + 1;
 def okToSell = isStrategySell and (barsSinceBuy > minHoldingPeriod);
 def okToBuy  = buyAfterIsTrue and isStrategyBuy and ( ! isStrategySell );
-#def okToBuy  =  ( ! isStrategySell );
+# def okToBuy  =  isStrategyBuy and ( ! isStrategySell );
 
 
-#AddVerticalLine( (barnumber() == firstBarNum), barnumber(), Color.ORANGE, curve.SHORT_DASH);
+AddVerticalLine( isFirstBar or isMidPeriod, GetYYYYMMDD(), Color.ORANGE, curve.SHORT_DASH);
 
 ## ###################################
 ## show labels for ATR and Stop Limits
@@ -235,10 +240,11 @@ input maximumHoldingFactor = 65;
 #def minBuyPercentGain  = Round( (ATRBuyFactor * currentATRPct * 100 / 1.75), 2 );
 
 plot isSell =  okToSell ;
-plot isBuy =  notTooEarly and (buyOverIsTrue or okToBuy);;
+plot isBuy =  notTooEarly and (buyOverIsTrue or okToBuy);
 isSell.SetHiding( 1 );
 isBuy.SetHiding( 1 );
-
+#strongSell.SetHiding( 1 );
+#strongBuy.SetHiding( 1 );
 
 ## ############################################################
 ## Buy Orders
@@ -269,49 +275,51 @@ isBuy.SetHiding( 1 );
 #                    else "SELL"
 #);
 
-# AddLabel( 1, # visibility, 
-#     "ATR=" + Round( lastATR, 1 )
-#     + ", ATR%=" + Round( currentATRPct * 100, 1 )
-#     + ", TS%=" + stopLimitPct
-#     + ", Yld=" + Round( GetYield() * 100, 1 )
-#     + ", TRG=" + stopLimitPrc
-#     + ", LMT=" + Round(stopLimitPrc * 0.995, 2)
-#    + "   "
-#     ,
-#     if isBuy then Color.UPTICK
-#     else if isSell then Color.DOWNTICK
-#     else Color.GRAY
-# );
+## ###################################
+AddLabel( 1,
+    "ATR=" + Round( lastATR, 1 )
+    + ", ATR%=" + Round( currentATRPct * 100, 1 )
+    + ", TS%=" + stopLimitPct
+    + ", 0.76*ATR%=" + Round( currentATRPct * 100 * 0.76 , 2 )
+    + ", 1.5*ATR%=" + Round( currentATRPct * 100 * 1.5 , 2 )
+    #+ ", Yld=" + Round( GetYield() * 100, 1 )
+    + "  "
+    #+ ", TRG=" + stopLimitPrc
+    #+ ", LMT=" + Round(stopLimitPrc * 0.995, 2)
+    ,
+    if close < trail then Color.UPTICK 
+    else Color.GRAY
+);
 
 ## ###################################
-# AddLabel( 1, 
-#    "Buy " + Max( 1.0, Floor( buyAmount / 4 / open ) )
-#    + " BID> " + Round( if (close<trail) then trail else (close*1.05), 2)
-#    + "  "
-#     + ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
-#     + ", Amt: " + max( ceil(trail * 2 * (1+currentATRPct)), 700 ) 
-#     ,
-#     if close < trail then Color.UPTICK 
-#     else Color.GRAY
-# );
+AddLabel( 1, 
+    " Buy " + Max( 1.0, Floor( buyAmount / 4 / open ) )
+    + " BID> " + Round( if (close<trail) then trail else (close*1.05), 2)
+    + "   "
+    #+ ", CNCL MARK>" + Round(trail * (1 + currentATRPct), 2)
+    #+ ", Amt: " + max( ceil(trail * 2 * (1+currentATRPct)), 700 ) 
+    ,
+    if close < trail then Color.UPTICK 
+    else Color.GRAY
+);
 
 ## ###################################
-# AddLabel( 1, 
-#     "Sell SBMT ASK<" + Round(trail / (1 - currentATRPct) / (1 - 0.0125), 2)
-#     + ", ATR=" + Round( currentATRPct * 100, 1 )
-#     + "%, CNCL MARK<" + Round(trail, 2) + "  "
-#     ,
-#     if close > trail then Color.DOWNTICK 
-#     else Color.GRAY
-# );
+AddLabel( 1, 
+    "Sell ASK<" + Round(trail / (1 - currentATRPct) / (1 - 0.0125), 2)
+    + ", ATR=" + Round( currentATRPct * 100, 1 )
+    + "%, CNCL MARK<" + Round(trail, 2) + "  "
+    ,
+    if close > trail then Color.DOWNTICK 
+    else Color.GRAY
+);
 
 ## ###################################
-# AddLabel( 1, 
-#     "Div: " + Round(GetYield() * 100, 2) + "  "
-#     + "P/L=" + FloatingPL()
-#     #+ " bars: " + barNumber() + "  "
-#     , if FloatingPL() > 8000 then Color.UPTICK
-#        else if FloatingPL() > 6000 then Color.CYAN
-#        else if FloatingPL() > 0 then Color.YELLOW
-#         else Color.RED
-# );
+AddLabel( 1, 
+    "Div: " + Round(GetYield() * 100, 2) + "  "
+    + "P/L=" + FloatingPL()
+    # + " bars: " + barNumber() + "  "
+    , if FloatingPL() > 8000 then Color.UPTICK
+        else if FloatingPL() > 6000 then Color.CYAN
+        else if FloatingPL() > 0 then Color.YELLOW
+        else Color.RED
+);

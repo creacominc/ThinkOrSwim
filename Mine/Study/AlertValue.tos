@@ -1,0 +1,112 @@
+script Barchart_Study {
+declare upper;
+
+input strategyType = {default PriceVsMA, MACross};
+
+input fastLength = 20;
+input slowLength = 50;
+
+# -------------------------
+# Moving averages
+# -------------------------
+
+def fastMA = Average(close, fastLength);
+def slowMA = Average(close, slowLength);
+
+# -------------------------
+# Moving average plots
+# -------------------------
+# 
+# plot FastMAPlot = fastMA;
+# 
+# plot SlowMAPlot =
+#     if strategyType == strategyType.MACross
+#     then slowMA
+#     else Double.NaN;
+# 
+# FastMAPlot.SetDefaultColor(Color.CYAN);
+# FastMAPlot.SetLineWeight(2);
+# 
+# SlowMAPlot.SetDefaultColor(Color.MAGENTA);
+# SlowMAPlot.SetLineWeight(2);
+
+# -------------------------
+# Signals
+# -------------------------
+
+def priceBuySignal = close crosses above fastMA;
+def priceSellSignal = close crosses below fastMA;
+
+def crossBuySignal = fastMA crosses above slowMA;
+def crossSellSignal = fastMA crosses below slowMA;
+
+def buySignal =
+    if strategyType == strategyType.PriceVsMA
+    then priceBuySignal
+    else crossBuySignal;
+
+def sellSignal =
+    if strategyType == strategyType.PriceVsMA
+    then priceSellSignal
+    else crossSellSignal;
+
+# -------------------------
+# Signal plot
+# -------------------------
+
+plot signal =
+    if buySignal then 1
+    else if sellSignal then -1
+    else 0;
+
+signal.SetPaintingStrategy(PaintingStrategy.VALUES_BELOW);
+signal.AssignValueColor(
+    if signal > 0 then Color.GREEN
+    else if signal < 0 then Color.RED
+    else Color.CURRENT
+);
+
+# -------------------------
+# Strategy orders
+# -------------------------
+# 
+# AddOrder(
+#     OrderType.BUY_AUTO,
+#     buySignal,
+#     open[-1],
+#     100,
+#     Color.GREEN,
+#     Color.GREEN,
+#     "BUY"
+# );
+# 
+# AddOrder(
+#     OrderType.SELL_AUTO,
+#     sellSignal,
+#     open[-1],
+#     100,
+#     Color.RED,
+#     Color.RED,
+#     "SELL"
+# );
+
+
+# -------------------------
+# Strategy label
+# -------------------------
+# 
+# AddLabel(
+#     yes,
+#     if strategyType == strategyType.PriceVsMA
+#     then "Price vs " + fastLength + "-D MA"
+#     else fastLength + "-D vs " + slowLength + "-D MA X",
+#     Color.WHITE,
+#     Location.TOP_RIGHT,
+#     Fontsize.SMALL,
+#     yes
+# );
+
+}
+plot defaultPlot = 
+Barchart_Study() crosses above 0
+;

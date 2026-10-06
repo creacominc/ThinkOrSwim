@@ -1,0 +1,88 @@
+#Written by TOS Indicators - 2021
+#Home of the Volatility Box
+#Covered Call Calculator
+#Tutorial: https://www.tosindicators.com/indicators/covered-call-calculator
+#The following thinkSript code needs to be pasted in a Custom Quote script on the options chain.
+
+def strike = GetStrike();
+def underlyingClose = close(GetUnderlyingSymbol());
+
+def maxShares = 100;
+def maxContracts = 1;
+
+def daysToExpiration = GetDaysToExpiration();
+
+def premium = maxContracts * close * 100;
+def premiumPct = premium / (maxShares * underlyingClose);
+def premiumPerDay = premium / daysToExpiration;
+
+def strikePriceGain = strike - underlyingClose;
+def premiumPlusShares = ((strikePriceGain * maxShares) + premium);
+def premiumPlusSharesPct = premiumPlusShares / (maxShares * underlyingClose);
+def ppctPerDay = premiumPct / daysToExpiration;
+def pppPerDay = premiumPlusSharesPct / daysToExpiration;
+
+# for income indications we want the premium percent per month
+def ppctPerMonth = ppctPerDay * 365/12;
+
+
+# minimum strike is 10% above the close except for these which are currently under water.
+plot minStrike = Ceil( max ( underlyingClose, 
+                if "AB" == GetUnderlyingSymbol() then 50 else
+                if "ABR" == GetUnderlyingSymbol() then 18 else
+                if "ACHR" == GetUnderlyingSymbol() then 4 else
+                if "ACRE" == GetUnderlyingSymbol() then 14 else
+                if "AGI" == GetUnderlyingSymbol() then 18 else
+                if "AHH" == GetUnderlyingSymbol() then 13.5 else
+                if "AQN" == GetUnderlyingSymbol() then 14 else
+                if "AVGO" == GetUnderlyingSymbol() then 75 else
+                if "CCL" == GetUnderlyingSymbol() then 19 else
+                if "CSIQ" == GetUnderlyingSymbol() then 21 else
+                if "CUBE" == GetUnderlyingSymbol() then 52 else
+                if "DOC" == GetUnderlyingSymbol() then 33 else
+                if "EGO" == GetUnderlyingSymbol() then 16.5 else
+                if "ET" == GetUnderlyingSymbol() then 14 else
+                if "KGC" == GetUnderlyingSymbol() then 9.5 else
+                if "MOD" == GetUnderlyingSymbol() then 61 else
+                if "NCLH" == GetUnderlyingSymbol() then 21 else
+                if "NVDA" == GetUnderlyingSymbol() then 41 else
+                if "OCSL" == GetUnderlyingSymbol() then 22 else
+                if "PBI" == GetUnderlyingSymbol() then 7.5 else
+                if "PLTR" == GetUnderlyingSymbol() then 37 else
+                if "SGU" == GetUnderlyingSymbol() then 14 else
+                if "SIGA" == GetUnderlyingSymbol() then 9.5 else
+                if "TEVA" == GetUnderlyingSymbol() then 18 else
+                if "UMC" == GetUnderlyingSymbol() then 8.5 else
+                1 )  * 1.10);
+
+#def isOutOfTheMoney = (strike >= minStrike);
+#
+#def isOutOfTheMoneyCall = isOutOfTheMoney 
+#                        and !IsPut() 
+#                        and (close>0.01)
+#                        and (premiumPlusSharesPct > 0.10)
+#                        and ((ppctPerMonth > 0.0015) or (pppPerDay > 0.00025));
+
+#AddLabel( yes
+#         ,  if isOutOfTheMoneyCall then 
+#                AsPercent( ppctPerMonth )
+#                + " | "
+##                + Round( premiumPlusShares, 2 )
+##                + " | "
+#                + AsPercent(premiumPlusSharesPct)
+##                + " | "
+##                + AsPrice(minStrike)
+#            else if !isOutOfTheMoney then  "!OTM " + minStrike
+#            else if !(close>0.01) then  "!close " + close
+#            else if !(ppctPerMonth>0.0015) then "!ppctPerMonth " + pppPerDay
+#            else if !(premiumPlusSharesPct > 0.01) then  "!PPct " + premiumPct
+#            else " "
+#        , if isOutOfTheMoneyCall
+#          then Color.GREEN 
+#          else Color.WHITE
+#);
+
+
+#  This script was the OPtion%Gain.
+# def condition =(close - close[3])/close[3];
+# AddLabel(condition,Round(condition*100,0)+"%",if condition >= 0.5 then # color.green else if condition <= -0.5 then color.red else color.white);

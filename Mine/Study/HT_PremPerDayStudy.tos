@@ -1,0 +1,45 @@
+# plot the premium per day based on close price.
+
+def underlyingClose = close(GetUnderlyingSymbol());
+def isInTheMoney = (GetStrike() > underlyingClose);
+
+
+def barNumber = BarNumber();
+def curBid = close(priceType = priceType.BID);
+def lastBid = if ! isNAN(close(priceType = priceType.BID))
+                  then close(priceType = priceType.BID)
+                  else lastBid[1];
+#plot ppd = lastBid;
+
+def premium = lastBid * 100;
+def daysToExpiration = GetDaysToExpiration();
+plot premiumPerDay = premium / daysToExpiration;
+
+def premiumPercent = premium / underlyingClose;
+#def probOTM = 
+def strike = GetStrike();
+#def avgPrice = GetAveragePrice( GetUnderlyingSymbol() );
+def gainPct = (strike - underlyingClose) / underlyingClose;
+
+AddLabel( 1, 
+    " bid = " + lastBid
+    + ",  premiumPerDay = " + premiumPerDay
+    ,
+    Color.WHITE
+);
+
+AddChartBubble( 1, 
+                close,
+                " bid " + lastBid
+                + "\n premium = " + premium
+                + "\n daysToExpiration = " + daysToExpiration
+                + "\n premiumPerDay = " + premiumPerDay
+                + "\n underlyingClose = " + underlyingClose
+                + "\n premiumPercent = " + premiumPercent
+                + "\n strike = " + strike
+                #+ "\n avgPrice = " + avgPrice
+                + "\n gainPct = " + AsPercent(gainPct)
+                + "\n  barNumber = " + barNumber
+                , Color.green,
+                yes );
+
