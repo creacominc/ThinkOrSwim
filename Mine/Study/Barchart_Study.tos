@@ -13,23 +13,6 @@ def fastMA = Average(close, fastLength);
 def slowMA = Average(close, slowLength);
 
 # -------------------------
-# Moving average plots
-# -------------------------
-# 
-# plot FastMAPlot = fastMA;
-# 
-# plot SlowMAPlot =
-#     if strategyType == strategyType.MACross
-#     then slowMA
-#     else Double.NaN;
-# 
-# FastMAPlot.SetDefaultColor(Color.CYAN);
-# FastMAPlot.SetLineWeight(2);
-# 
-# SlowMAPlot.SetDefaultColor(Color.MAGENTA);
-# SlowMAPlot.SetLineWeight(2);
-
-# -------------------------
 # Signals
 # -------------------------
 
@@ -50,6 +33,10 @@ def sellSignal =
     else crossSellSignal;
 
 # -------------------------
+# Study-only output (active in Study, commented in Strategy)
+# -------------------------
+
+# -------------------------
 # Signal plot
 # -------------------------
 
@@ -66,9 +53,30 @@ signal.AssignValueColor(
 );
 
 # -------------------------
+# Strategy-only output (active in Strategy, commented in Study)
+# -------------------------
+
+# -------------------------
+# Moving average plots
+# -------------------------
+
+# plot FastMAPlot = fastMA;
+
+# plot SlowMAPlot =
+#     if strategyType == strategyType.MACross
+#     then slowMA
+#     else Double.NaN;
+
+# FastMAPlot.SetDefaultColor(Color.CYAN);
+# FastMAPlot.SetLineWeight(2);
+
+# SlowMAPlot.SetDefaultColor(Color.MAGENTA);
+# SlowMAPlot.SetLineWeight(2);
+
+# -------------------------
 # Strategy orders
 # -------------------------
-# 
+
 # AddOrder(
 #     OrderType.BUY_AUTO,
 #     buySignal,
@@ -78,7 +86,7 @@ signal.AssignValueColor(
 #     Color.GREEN,
 #     "BUY"
 # );
-# 
+
 # AddOrder(
 #     OrderType.SELL_AUTO,
 #     sellSignal,
@@ -89,11 +97,10 @@ signal.AssignValueColor(
 #     "SELL"
 # );
 
-
 # -------------------------
 # Strategy label
 # -------------------------
-# 
+
 # AddLabel(
 #     yes,
 #     if strategyType == strategyType.PriceVsMA
