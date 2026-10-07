@@ -6,11 +6,11 @@ input fastLength = 20;
 input slowLength = 50;
 
 # -------------------------
-# Moving averages
+# Exponential moving averages
 # -------------------------
 
-def fastMA = Average(close, fastLength);
-def slowMA = Average(close, slowLength);
+def fastMA = ExpAverage(close, fastLength);
+def slowMA = ExpAverage(close, slowLength);
 
 # -------------------------
 # Signals
@@ -104,8 +104,8 @@ signal.AssignValueColor(
 # AddLabel(
 #     yes,
 #     if strategyType == strategyType.PriceVsMA
-#     then "Price vs " + fastLength + "-D MA"
-#     else fastLength + "-D vs " + slowLength + "-D MA X",
+#     then "Price vs " + fastLength + "-D EMA"
+#     else fastLength + "-D vs " + slowLength + "-D EMA X",
 #     Color.WHITE,
 #     Location.TOP_RIGHT,
 #     Fontsize.SMALL,
