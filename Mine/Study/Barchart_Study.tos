@@ -1,6 +1,6 @@
 declare upper;
 
-input strategyType = {default PriceVsMA, MACross};
+input strategyType = {default PriceVsEMA, EMACross};
 
 input fastLength = 20;
 input slowLength = 50;
@@ -23,12 +23,12 @@ def crossBuySignal = fastMA crosses above slowMA;
 def crossSellSignal = fastMA crosses below slowMA;
 
 def buySignal =
-    if strategyType == strategyType.PriceVsMA
+    if strategyType == strategyType.PriceVsEMA
     then priceBuySignal
     else crossBuySignal;
 
 def sellSignal =
-    if strategyType == strategyType.PriceVsMA
+    if strategyType == strategyType.PriceVsEMA
     then priceSellSignal
     else crossSellSignal;
 
@@ -63,7 +63,7 @@ signal.AssignValueColor(
 # plot FastMAPlot = fastMA;
 
 # plot SlowMAPlot =
-#     if strategyType == strategyType.MACross
+#     if strategyType == strategyType.EMACross
 #     then slowMA
 #     else Double.NaN;
 
@@ -103,9 +103,9 @@ signal.AssignValueColor(
 
 # AddLabel(
 #     yes,
-#     if strategyType == strategyType.PriceVsMA
-#     then "Price vs " + fastLength + "-D EMA"
-#     else fastLength + "-D vs " + slowLength + "-D EMA X",
+#     if strategyType == strategyType.PriceVsEMA
+#     then "Price vs " + fastLength + " D EMA"
+#     else fastLength + " D vs " + slowLength + " D EMA X",
 #     Color.WHITE,
 #     Location.TOP_RIGHT,
 #     Fontsize.SMALL,
