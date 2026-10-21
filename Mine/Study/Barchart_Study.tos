@@ -1,3 +1,12 @@
+# Signal changes (2026-10-21):
+# Each price/EMA or fast/slow EMA cross arms its direction until the first
+# confirmed signal: buy requires close > open and close > close[1]; sell
+# requires close < open and close < close[1]. Confirmation can occur later
+# while the relationship holds. After firing, suppress further signals until
+# a new cross; an opposite cross replaces any pending direction.
+# State persists across bars, not live ticks. Use daily aggregation for
+# today's open and prior-day close. Study/Strategy differ only by comment toggles.
+
 declare upper;
 
 input strategyType = {default PriceVsEMA, EMACross};
@@ -16,21 +25,43 @@ def slowMA = ExpAverage(close, slowLength);
 # Signals
 # -------------------------
 
-def priceBuySignal = close crosses above fastMA;
-def priceSellSignal = close crosses below fastMA;
-
-def crossBuySignal = fastMA crosses above slowMA;
-def crossSellSignal = fastMA crosses below slowMA;
-
-def buySignal =
+# Select the relationship whose crosses arm the state machine.
+def relationship =
     if strategyType == strategyType.PriceVsEMA
-    then priceBuySignal
-    else crossBuySignal;
+    then close - fastMA
+    else fastMA - slowMA;
 
-def sellSignal =
-    if strategyType == strategyType.PriceVsEMA
-    then priceSellSignal
-    else crossSellSignal;
+def bullish = relationship > 0;
+def bearish = relationship < 0;
+def crossedUp = relationship crosses above 0;
+def crossedDown = relationship crosses below 0;
+
+# On the live bar, close represents the latest price.
+# open and close[1] use the selected aggregation (daily for prior-day close).
+# Equality with either reference does not qualify in either direction.
+def buyPriceConfirmed = close > open and close > close[1];
+def sellPriceConfirmed = close < open and close < close[1];
+
+# States: 0 = waiting for a cross; 1/-1 = buy/sell armed;
+#         2/-2 = buy/sell consumed, waiting for another cross.
+# Start unarmed: an observed cross is required before the first signal.
+# A cross replaces any pending direction. Confirmation may occur on the
+# cross bar or a later bar, but only while that relationship still holds.
+# This stores state between bars, not between ticks within the live bar.
+def signalState = CompoundValue(1,
+    if crossedUp then
+        (if buyPriceConfirmed then 2 else 1)
+    else if crossedDown then
+        (if sellPriceConfirmed then -2 else -1)
+    else if signalState[1] == 1 and bullish and buyPriceConfirmed then 2
+    else if signalState[1] == -1 and bearish and sellPriceConfirmed then -2
+    else signalState[1],
+    0);
+
+def buySignal = bullish and buyPriceConfirmed
+    and (crossedUp or signalState[1] == 1);
+def sellSignal = bearish and sellPriceConfirmed
+    and (crossedDown or signalState[1] == -1);
 
 # -------------------------
 # Study-only output (active in Study, commented in Strategy)
