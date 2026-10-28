@@ -1,11 +1,8 @@
-# Signal changes (2026-10-21):
-# Each price/EMA or fast/slow EMA cross arms its direction until the first
-# confirmed signal: buy requires close > open and close > close[1]; sell
-# requires close < open and close < close[1]. Confirmation can occur later
-# while the relationship holds. After firing, suppress further signals until
-# a new cross; an opposite cross replaces any pending direction.
-# State persists across bars, not live ticks. Use daily aggregation for
-# today's open and prior-day close. Study/Strategy differ only by comment toggles.
+# Signal changes (2026-10-28):
+# A relationship must clear atrMultiplier times the fastLength-bar ATR before
+# arming a direction. The threshold follows the chart's aggregation. A confirmed
+# direction stays armed until the opposite threshold is crossed.
+# Study/Strategy differ only by comment toggles.
 
 declare upper;
 
@@ -13,6 +10,7 @@ input strategyType = {default PriceVsEMA, EMACross};
 
 input fastLength = 20;
 input slowLength = 50;
+input atrMultiplier = 0.25;
 
 # -------------------------
 # Exponential moving averages
@@ -20,6 +18,8 @@ input slowLength = 50;
 
 def fastMA = ExpAverage(close, fastLength);
 def slowMA = ExpAverage(close, slowLength);
+def atrValue = reference ATR(fastLength);
+def atrThreshold = atrValue * atrMultiplier;
 
 # -------------------------
 # Signals
@@ -31,13 +31,13 @@ def relationship =
     then close - fastMA
     else fastMA - slowMA;
 
-def bullish = relationship > 0;
-def bearish = relationship < 0;
-def crossedUp = relationship crosses above 0;
-def crossedDown = relationship crosses below 0;
+def bullish = relationship > atrThreshold;
+def bearish = relationship < -atrThreshold;
+def crossedUp = relationship crosses above atrThreshold;
+def crossedDown = relationship crosses below -atrThreshold;
 
 # On the live bar, close represents the latest price.
-# open and close[1] use the selected aggregation (daily for prior-day close).
+# open and close[1] use the selected chart aggregation.
 # Equality with either reference does not qualify in either direction.
 def buyPriceConfirmed = close > open and close > close[1];
 def sellPriceConfirmed = close < open and close < close[1];
@@ -135,8 +135,8 @@ AddOrder(
 AddLabel(
     yes,
     if strategyType == strategyType.PriceVsEMA
-    then "Price vs " + fastLength + " D EMA"
-    else fastLength + " D vs " + slowLength + " D EMA X",
+    then "Price vs " + fastLength + " EMA"
+    else fastLength + " vs " + slowLength + " EMA X",
     Color.WHITE,
     Location.TOP_RIGHT,
     Fontsize.SMALL,
